@@ -191,17 +191,234 @@ Average: all 0.00 0.00 0.00 0.00 0.00 0.00
 - /sys ファイルシステムは、一般に、数万の統計量を格納する読み出し専用ファイルと、カーネルの状態を変更するための書き込み可能ファイルを持っている。
 ### 4.3.3 遅延アカウンティング
 - 遅延アカウンティング（delay accouting）は、プロセスやスレッドグループが、どれだけカーネルに待たされたかを測定できる仕組み。
-- CONFIG_TASK_DELAY_ACCTオプションを指定したLinux システムは、次の項目についてタスクごとの時間を管理する。
+- CONFIG_TASK_DELAY_ACCT オプションを指定したLinux システムは、次の項目についてタスクごとの時間を管理する。
   - スケジューラレイテンシ（scheduler latency）: on-CPUになるのを待つ時間
   - ブロックI/O（block I/O）: ブロックI/Oが完了するのを待つ時間
   - スワッピング（swapping）: ページングを待つ時間（メモリの圧迫度）
   - メモリの回収（memory reclaim）: メモリ回収ルーチンが実行されるのを待つ時間
+- スケジューラレイテンシ統計は、schedstats（/proc に含まれている）から情報を得ている
+- これらの統計量は、taskstats を使うユーザーレベルツールで読むことができる
+- netlink ベースのインターフェイスである。カーネルのソースコードに次のものが含まれている
+  - Documentation/accounting/delay-accounting.txt: ドキュメント
+  - tools/accounting/getdelays.c: プログラム例
+    - https://gitlab.sdu.dk/sdurobotics/linux-kernels/kernel/-/blob/v4.13.13-Ubuntu-4.13.0-32.35/tools/accounting/getdelays.c
+  - ![getdelays出力](./images/ch04/4-3-3-getdelays.png)
+
+- 🤔 CONFIG_TASK_DELAY_ACCTを有効にする方法
+  - カーネルのソースをダウンロードして設定を有効にした後、再ビルドする必要がある
+    - https://chat.openai.com/chat/1c3611f6-d2d0-4157-b8a1-6c9d545f7a05
+  - CONFIG_TASKSTATS も y に設定しておく必要がある
+  
 ### 4.3.4 netlink
+- カーネル情報をフェッチするための特殊なソケットアドレスファミリ（AF_NETLINK）
+  - ソケットベースのプログラム
+- /procよりも効率が良く通知もサポートされる
+- straceを使って ss（socket statistics: TCP ポートや UDP ポートの通信状態を確認するためのコマンド）がカーネルのどこから情報を得ているかを調べる
+  - strace: プログラムから呼ばれるシステムコールを確認する
+  - ![getdelays出力](./images/ch04/4-3-4-strace-ss.png)
+  - NETLINK_SOCK_DIAG グループを指定してAF_NETLINK ソケットをオープンしている
+- netlink families 主なもの
+  - NETLINK_ROUTE: ルート情報（/proc/net/route もある）
+  - NETLINK_SOCK_DIAG: ソケット情報
+  - NETLINK_SELINUX: SELinux のイベント通知
+  - NETLINK_AUDIT: 監査（セキュリティ）
+  - NETLINK_SCSITRANSPORT: SCSI トランスポート
+  - NETLINK_CRYPTO: カーネル暗号情報
+
 ### 4.3.5 トレースポイント
+- カーネルコードの論理的な位置にハードコードされたインストルメンテーションポイント
+- トレーシングのためのイベントソース
+- トレースポイントインフラストラクチャは、マシュー・デスノイヤーズが開発して2009 年のLinux 2.6.32 で使えるようになった
+- Stable API (過去に1回 変更されたことがあるが・・)
+  - ロバスト（堅牢）なツールを開発できる
+- サマリー統計の域を超えてカーネルの動作を深く知るための高度なトレーシングツールを作る基礎となるもので、パフォーマンス分析の重要なリソース
+
+#### 4.3.5.1 トレースポイントの例
+- 利用できるトレースポイントは、perf listコマンドで調べられる
+  - ![getdelays出力](./images/ch04/4-3-5-1-tracepoint.png)
+- イベントの発生時だけでなく、イベントのコンテキストデータも表示できる
+- トレースポイントは、実際にはカーネルソースコードに配置されたトレーシング関数である（トレーシングフック: tracing hook とも呼ばれる）
+- たとえば、trace_sched_wakeup( ) というトレースポイントがあり、from kernel/sched/core.c にこの関数の呼び出しが含まれている
+  - https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/kernel/sched/core.c?h=v6.2.10#n4145
+- 実際には TRACE_EVENT マクロで定義されたトレースイベント
+  - https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/trace/events/sched.h?h=v6.2.10
+  - `TRACE_EVENT` https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/linux/tracepoint.h?h=v6.2.10#n549
+  - ` __DECLARE_TRACE` https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/linux/tracepoint.h?h=v6.2.10#n240
+
+#### 4.3.5.2 トレースポイントの引数と書式文字列
+- 個々のトレースポイントは、イベントのコンテキスト情報であるイベント引数を記述する書式文字列を持つ。
+- 書式文字列の構造は、/sys/kernel/debug/tracing/events ディレクトリの下にあるformat ファイルで
+見ることができる。最後の行が書式文字列と引数を示している。
+  - ![block_rq_issue](./images/ch04/4-3-5-2-block_rq_issue.png)
+- 👩‍💻 /sys/kernel/debug/tracing/ にトレース情報が出力される
+- perf や bpftrace　のトレーサでを使うことでサイズや表示形式を指定することもできる
+
+#### 4.3.5.3 トレースポイントのインターフェイス
+- トレーシングツールは、tracefs（一般に、/sys/kernel/debug/tracing にマウントされる）のトレースイベントファイルかperf_event_open(2) システムコールを介してトレースポイントを利用できる
+
+```
+# strace -e openat ~/Git/perf-tools/bin/iosnoop
+chdir("/sys/kernel/debug/tracing") = 0
+openat(AT_FDCWD, "/var/tmp/.ftrace-lock", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3
+[...]
+openat(AT_FDCWD, "events/block/block_rq_issue/enable", O_WRONLY|O_CREAT|O_TRUNC,
+0666) = 3
+openat(AT_FDCWD, "events/block/block_rq_complete/enable", O_WRONLY|O_CREAT|O_TRUNC,
+0666) = 3
+[...]
+```
+
+#### 4.3.5.4 トレースポイントのオーバーヘッド
+- トレースポイントを使うときにはオーバーヘッドのことを考える必要がある
+  - トレースポイント, トレーシングツール ともにCPUオーバヘッドが可kる
+  - 本番アプリケーションに影響が出るかどうかはイベント発生頻度とCPUの数によって決まる
+  - 今日の一般的はシステム（CPU 4 -128個）では、毎秒1万イベントまでのオーバーヘッドは無視できる
+    - スケジューライベントは毎秒10万回を軽く超えることがある
+  - 2018年のLinux 4.7 で追加された rawトレースポイントという新しいタイプのトレースポイントは、安定したトレースポイント引数を作るためのコストを取り除き、オーバーヘッドを削減している
+  - トレースポイントを無効化するときのオーバーヘッドもある
+    - 非常に小さいが、考慮する必要がある
+
+#### 4.3.5.5 トレースポイントのドキュメント
+- カーネルソースのDocumentation/trace/tracepoints.rst でドキュメントされている
+
 ### 4.3.6 kprobe
-### 4.3.7 uprobe 
+- 動的インストルメンテーションをするトレーサーのためのLinuxカーネルイベントソース
+- あらゆるカーネル関数、命令をトレースできるもので、2004 年のLinux 2.6.9 で使えるようになった
+- kprobe は、カーネルのバージョンによって変更される可能性のあるカーネル関数と引数を表に出してしまうので、不安定なAPIだと考えられている
+- 標準的な方法は、実行中のカーネルコードの命令テキストを書き換えて、必要な命令を挿入するというもの
+- kprobe は、本番稼働しているカーネルの動作についてほぼ無限の情報を引き出すための最後の手段
+- ![表4.3 kprobeとトレースポイントの比較](./images/ch04/table-4-3.png)
+
+#### 4.3.6.1 kprobeの例
+- 👩‍💻 bpftrace などのトレーシングツールの内部で利用されている
+- 次のbpftrace コマンドは、カーネル関数のdo_nanosleep() をインストルメンテーションし、on-CPUのプロセスを表示する。
+```
+# bpftrace -e 'kprobe:do_nanosleep { printf("sleep by: %s\n", comm); }'
+Attaching 1 probe...
+sleep by: mysqld
+sleep by: mysqld
+sleep by: sleep
+^C
+#
+```
+- この出力には、myslqd という名前のプロセスによる2 回のスリープと、sleep（おそらく/bin/sleep）による1回のスリープが含まれている。do_nanosleep( ) に対するkprobeイベントはbpftrace プログラムが実行を開始したときに作られ、bpftrace が強制終了（Ctrl-C）されたときに削除される。
+
+#### 4.3.6.2 kprobeによる引数のトレース
+- kprobe はカーネル関数呼び出しをトレースできる
+```
+# bpftrace -e 'kprobe:do_nanosleep { printf("mode: %d\n", arg1); }'
+Attaching 1 probe...
+mode: 1
+mode: 1
+mode: 1
+[...]
+```
+
+#### 4.3.6.3 kretprobe 
+- カーネル関数からのリターンと戻り値は、kretprobe（kernel return probe を意味する）でトレースできる
+  - 関数の実行開始をトレースするkprobe を使って実装されている
+- kprobe、タイムスタンプを記録するトレーサーとの組み合わせでkretprobeを使うと、カーネル関数の実行時間を計測できる。
+```
+# bpftrace -e 'kprobe:do_nanosleep { @ts[tid] = nsecs; }
+kretprobe:do_nanosleep /@ts[tid]/ {
+@sleep_ms = hist((nsecs - @ts[tid]) / 1000000); delete(@ts[tid]); }
+END { clear(@ts); }'
+Attaching 3 probes...
+^C
+@sleep_ms:
+[0] 1280 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[1] 1 | |
+[2, 4) 1 | |
+:
+:
+```
+- bpftrace の構文は、「15 章BPF」で説明する
+  
+#### 4.3.6.4 kprobeのインターフェイスとオーバーヘッド
+- krobeは、/sys ファイル、perf_event_open(2)、register_kprobe()カーネルAPIを介してインストルメンテーションできる
+- 関数の実行開始をトレースするときには、オーバーヘッドはトレースポイントとほぼ同じだが、オフセットをトレースするとき（ブレークポイント方式）やkretprobe を使うとき（trampoline 関数）にはトレースポイントよりもオーバーヘッドが高くなる
+
+#### 4.3.6.5 kprobeのドキュメント
+- kprobe はLinux ソースのDocumentation/kprobes.txt でドキュメントされている
+  - https://www.kernel.org/doc/Documentation/kprobes.txt
+
+### 4.3.7 uprobe
+- uprobe（user-space probeを意味する）は、アプリケーションやライブラリに含まれる関数の動的インストルメンテーションをすることができ、ほかのツールでできる範囲を越えて、ソフトウェアの内部を深く掘り下げるための不安定APIを提供する
+
+#### 4.3.7.1 uprobeの例
+- シェルのbash(1) のなかでuprobe関数を挿入できる位置をリストアップする
+```
+# bpftrace -l 'uprobe:/bin/bash:*'
+uprobe:/bin/bash:rl_old_menu_complete
+uprobe:/bin/bash:maybe_make_export_env
+uprobe:/bin/bash:initialize_shell_builtins
+uprobe:/bin/bash:extglob_pattern_p
+uprobe:/bin/bash:dispose_cond_node
+uprobe:/bin/bash:decode_prompt_string
+[..]
+```
+- デフォルトでは、ユーザー空間コードは変更されずに実行される
+
+#### 4.3.7.2 uprobeによる引数のトレース
+- bpftrace を使ってbash のdecode_prompt_string( ) 関数をインストルメンテーションし、第1 引数を文字列で表示し
+```
+# bpftrace -e 'uprobe:/bin/bash:decode_prompt_string { printf("%s\n", str(arg0)); }'
+Attaching 1 probe...
+\[\e[31;1m\]\u@\h:\w>\[\e[0m\]
+\[\e[31;1m\]\u@\h:\w>\[\e[0m\]
+^C
+```
+- uprobe イベントは、bpftrace プログラムが実行を開始したときに作られ、bpftrace が強制終了（Ctrl-C）されたときに削除される
+
+#### 4.3.7.3 uretprobe
+- ユーザー関数からのリターンと戻り値は、uretprobe（user-level return probe を意味する）でトレースできる
+- uretprobe のオーバーヘッドによって高速な関数の計測値は大きく歪むことに注意しなければならない
+
+#### 4.3.7.4 uprobeのインターフェイスとオーバーヘッド
+- uprobe のインターフェースは/sys ファイルかperf_event_open(2)システムコール（こちらの方が望ましい）でインストルメンテーションできる
+- 現在のuprobe は、トラップでカーネルに入り込んで動作する
+- これはkprobe やトレースポイントよりもCPUオーバーヘッドが高い
+
+#### 4.3.7.5 uprobeのドキュメント
+- Documentation/trace/uprobetracer.rst
+  - https://www.kernel.org/doc/Documentation/trace/uprobetracer.txt
+
 ### 4.3.8 USDT
+- USDT（User-level Statically-Defined Tracing）は、トレースポイントのユーザー空間バージョンである
+- 一部のアプリケーションとライブラリは、コードにUSDTプローブを追加し、アプリケーションレベルイベントをトレースするための安定（公開）API を提供している
+- 👩‍💻 DTrace で使われている技術
+  - https://ja.wikipedia.org/wiki/DTrace
+- bpftrace を使ってOpenJDKのUSDTプローブをリストアップする場合
+```
+# bpftrace -lv 'usdt:/usr/lib/jvm/openjdk/libjvm.so:*'
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:class__loaded
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:class__unloaded
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:method__compile__begin
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:method__compile__end
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:gc__begin
+usdt:/usr/lib/jvm/openjdk/libjvm.so:hotspot:gc__end
+[...]
+```
+- ディスクI/Oではなくファイルシステム内のロックの競合のためにクエリーが遅くなっていることまで明らかにすることができる
+c- USDTは、パッケージバージョンのアプリケーションでは有効になっていないため、使うためには適切な構成オプションを指定してリビルドする必要がある
+- USDTプローブは、インストルメンテーションの対象である実行可能ファイルにコンパイルして組み込まなければならない
+- Javaのようにその場でJITコンパイルされる言語では、ダイナミックUSDTを使う
+  - ダイナミックUSDTプローブは共有ライブラリという形でプローブをプレコンパイルし、JIT コンパイルされる言語からプローブを呼び出すためのインターフェイスを提供する
+- USDTプローブは、有効化したときのオーバーヘッドだけでなく、無効可したときにもコード内にnop 命令が入るというオーバーヘッドがかかる
+
+#### 4.3.8.1 USDTのドキュメント
+- USDTプローブを使えるようにしているアプリケーションは、そのドキュメントでUSDTプローブのこ
+とを説明しているはずだ
+
 ### 4.3.9 ハードウェアカウンタ(PMC)
+- プロセッサなどのデバイスは、一般にアクティビティの観測のためにハードウェアカウンタをサポートしている
+- CPUサイクルレベルの低水準パフォーマンス情報を提供するプロセッサのプログラマブルなハードウェアレジスタを参照している
+
+#### 4.3.9.1 PMCの例
+#### 4.3.9.2 PMCのインターフェイス
+#### 4.3.9.3 PMCの難点
+#### 4.3.9.4 PMCのドキュメント
+
 ### 4.3.10 可観測性ツールのその他の情報ソース
 
 ## 4.4 sar
