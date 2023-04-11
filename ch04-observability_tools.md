@@ -496,11 +496,56 @@ $ kstat -p unix:0:system_misc:nproc
 unix:0:system_misc:nproc 94
 ```
 ## 4.4 sar
+- sar(1) は、それだけで多くのパフォーマンス障害を解決できる重要なシステムパフォーマンスツールだ
+- sar(1) は、sysstat パッケージから提供されている
 ### 4.4.1 sar(1)でできること
+- ![sar](./images/ch04/figure-4-6.png)
 ### 4.4.2 sar(1)モニタリング
-### 4.4.3 sar(1)のライブ出力
-### 4.4.4 sar(1)のドキュメント
+#### 4.4.2.1 構成（Ubuntu）
+- Ubuntu システムでは、ENABLED がtrue になるように/etc/default/sysstat ファイルを編集して sysstatを再起動すれば、sar(1) データ収集が有効になる。
+```/etc/default/sysstat
+#
+# Default settings for /etc/init.d/sysstat, /etc/cron.d/sysstat
+# and /etc/cron.daily/sysstat files
+#
+# Should sadc collect system activity informations? Valid values
+# are "true" and "false". Please do not put other values, they
+# will be overwritten by debconf!
+ENABLED="true"
+```
 
+```shell
+ubuntu# service sysstat restart
+```
+
+- 統計量を記録するスケジュールは、sysstat のcrontab ファイル /etc/cron.d/sysstat で変更できる
+
+```
+# The first element of the path is a directory where the debian-sa1
+# script is located
+PATH=/usr/lib/sysstat:/usr/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+# Activity reports every 10 minutes everyday
+5-55/10 * * * * root command -v debian-sa1 > /dev/null && debian-sa1 1 1
+# Additional run at 23:59 to rotate the statistics file
+59 23 * * * root command -v debian-sa1 > /dev/null && debian-sa1 60 2
+```
+
+- 全部の記録を取るなら、-S ALL オプションを使う
+  
+#### 4.4.2.2 出力
+- たとえば、次のコマンドラインは、CPU統計（-u）とTCP（-n TCP）、TCPエラー（-n ETCP）を出力する
+- ![sar](./images/ch04/4-4-2-2-sar.png)
+- 出力の先頭行はシステムのサマリー
+- sar -Aを実行すれば、すべての統計量が出力される
+#### 4.4.2.3 出力形式
+- sysstat パッケージにはsar(1) 統計を異なる形式で表示するためのsadf(1) コマンドが付属していて、JSON、SVG、CSV などの形式がサポートされている
+  
+### 4.4.3 sar(1)のライブ出力
+- インターバルとオプションの回数を指定してsar(1) を実行すると、ライブレポートが見られる
+- 1 秒間隔で5 回分のTCP統計を表示
+- ![sar](./images/ch04/4-4-3-sat.png)
+### 4.4.4 sar(1)のドキュメント
+- sar(1) の具体的な使い方は本書で後述していく。6 章から10 章を参照していただきたい
 ## 4.5 トレーシングツール
 
 ## 4.6 可観測性ツールに対する観察
