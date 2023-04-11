@@ -1,6 +1,6 @@
 # 第4章 可観測性ツール
 
-参）🤔オブザーバビリティとは？
+参）👩‍💻 オブザーバビリティとは？
 https://www.splunk.com/ja_jp/data-insider/what-is-observability.html
 > オブザーバビリティ(可観測性)とは、システムの出力を調査することによって内部の状態を測定する能力を指します。出力からの情報すなわちセンサーデータのみを使用して現在の状態を推定できるシステムは「オブザーバビリティがある」とみなされます。
 
@@ -204,7 +204,7 @@ Average: all 0.00 0.00 0.00 0.00 0.00 0.00
     - https://gitlab.sdu.dk/sdurobotics/linux-kernels/kernel/-/blob/v4.13.13-Ubuntu-4.13.0-32.35/tools/accounting/getdelays.c
   - ![getdelays出力](./images/ch04/4-3-3-getdelays.png)
 
-- 🤔 CONFIG_TASK_DELAY_ACCTを有効にする方法
+- 👩‍💻 CONFIG_TASK_DELAY_ACCTを有効にする方法
   - カーネルのソースをダウンロードして設定を有効にした後、再ビルドする必要がある
     - https://chat.openai.com/chat/1c3611f6-d2d0-4157-b8a1-6c9d545f7a05
   - CONFIG_TASKSTATS も y に設定しておく必要がある
