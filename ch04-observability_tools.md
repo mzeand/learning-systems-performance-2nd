@@ -186,9 +186,88 @@ Average: all 0.00 0.00 0.00 0.00 0.00 0.00
   - tcp_rmem など、設定変更が可能
 - 大半の/proc ファイルの読み出しにかかるオーバーヘッドは無視できる。
 - ただし、ページテーブルをたどっていかなければならないメモリマップ関連のファイルは例外。
+
+#### 4.3.1.1 プロセスごとの統計量
+- /proc には、プロセスごとの統計量を格納するさまざまなファイルが含まれている
+```
+$ ls -F /proc/18733
+arch_status environ mountinfo personality statm
+attr/ exe@ mounts projid_map status
+autogroup fd/
+  :
+```
+
+- プロセスごとのパフォーマンス計測に関連するファイル
+  - limits: 有効になっているリソース制限
+  - maps: メモリマップ
+  - sched: CPUスケジューラのさまざまな統計量
+  - schedstat: CPU の実行時間、レイテンシ、タイムスライス
+  - smaps: マッピングされているメモリ領域とその使用状況
+  - stat: CPUとメモリの全体的な使用状況を含むプロセスのステータスと統計量
+  - statm: ページ単位でのメモリの使用状況
+  - status: ラベル付きのstat、statm情報
+  - fd: ファイルディスクリプタシンボリックリンクのディレクトリ（fdinfo）
+  - cgroup: cgroupのメンバー情報
+  - task: タスク（スレッド）ごとの統計量のディレクトリ
+
+- top(1) は、システム上のすべてのアクティブプロセスでこれらを読み出しているので、これを実行するためにかかるオーバーヘッドが見てわかるほどになることがある
+
+#### 4.3.1.2 システム全体の統計量
+- システム全体の情報も含むように/proc を拡張しており、次のようなファイルとディレクトリが追加されている
+```
+$ cd /proc; ls -Fd [a-z]*
+acpi/ dma kallsyms mdstat schedstat thread-self@
+buddyinfo driver/ kcore meminfo scsi/ timer_list
+bus/ execdomains keys misc self@ tty/
+cgroups fb
+ :
+```
+- システム全体のパフォーマンス計測に関連するファイル
+  - cpuinfo: すべての仮想CPU、モデル名、クロックスピード、キャッシュサイズなどの物理プロセッサ情報
+  - diskstats: すべてのディスクデバイスのディスクI/O統計
+  - interrupts: CPUごとの割り込み数
+  - loadavg: 負荷の平均
+  - meminfo: システムメモリの使用状況
+  - net/dev: ネットワークインターフェイスの統計量
+  - net/netstat: システム全体でのネットワーク統計
+  - net/tcp: アクティブなTCPソケットの情報
+  - pressure/: PSI（Pressure stall information）ファイル
+  - schedstat: システム全体のCPUスケジューラ統計
+  - self: 現在のプロセスIDディレクトリへのシンボリックリンク
+  - slabinfo: カーネルスラブアロケータのキャッシュ統計
+  - stat: カーネルとシステムリソース統計のサマリーで、CPU、ディスク、ページング、スワップ、プロセスの情報が含まれる
+  - zoneinfo: メモリゾーン情報
+
+##### 4.3.1.2.1 CPU統計の精度
+- /proc/stat ファイルはシステム全体でのCPU 使用率の情報を提供している
+- この情報の精度はカーネルの構成によって変わる。
+- 解像度の高いカウンタ（VIRT_CPU_ACCOUNTING_NATIVEVIRT_CPU_ACCOUTING_GEN）
+を使い、より正確なIRQ時間を要求するオプション（IRQ_TIME_ACCOUNTING）を指定すれば、パフォーマンスにわずかな影響が及ぶが精度を上げられる。
+
+#### 4.3.1.3 ファイルの内容
+- /proc ファイルは通常テキスト形式
+  - カーネルには統計量をテキストにエンコードするというオーバーヘッド、ユーザーランドツールにはテキストをパースするというオーバーヘッドがかかっている
+
 ### 4.3.2 /sys
-- /proc/sys配下には、OSのチューニングパラメータが集まっている。ここにあるファイルやパラメータを理解することで、OSを特殊環境などに適応させることができる。(引用: https://atmarkit.itmedia.co.jp/flinux/special/proctune/proctune02a.html)
+- 👩‍💻 /proc/sys から分離して拡張された
+  - デバイスドライバ関連のプロセス統計
+  - 参: sysfs https://docs.oracle.com/cd/E39368_01/porting/ch06s09.html
 - /sys ファイルシステムは、一般に、数万の統計量を格納する読み出し専用ファイルと、カーネルの状態を変更するための書き込み可能ファイルを持っている。
+
+- 次に示すのは、CPU 0 の/sys ファイルリストである（一部だけに省略してある）
+```
+$ find /sys/devices/system/cpu/cpu0 -type f
+/sys/devices/system/cpu/cpu0/uevent
+/sys/devices/system/cpu/cpu0/hotplug/target
+/sys/devices/system/cpu/cpu0/hotplug/state
+/sys/devices/system/cpu/cpu0/hotplug/fail
+/sys/devices/system/cpu/cpu0/crash_notes_size
+/sys/devices/system/cpu/cpu0/power/runtime_active_time
+/sys/devices/system/cpu/cpu0/power/runtime_active_kids
+/sys/devices/system/cpu/cpu0/power/pm_qos_resume_latency_us
+/sys/devices/system/cpu/cpu0/power/runtime_usage
+[...]
+```
 ### 4.3.3 遅延アカウンティング
 - 遅延アカウンティング（delay accouting）は、プロセスやスレッドグループが、どれだけカーネルに待たされたかを測定できる仕組み。
 - CONFIG_TASK_DELAY_ACCT オプションを指定したLinux システムは、次の項目についてタスクごとの時間を管理する。
