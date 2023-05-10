@@ -319,6 +319,8 @@ func main() {
 - 目をつけるべきところは大きな「高原」と「塔」であり、そこはCPU時間の多くが費やされているところである。
 - フレームグラフの詳細については、「6 章CPU」の「6.7.3 フレームグラフ」を参照
 - 👩‍💻 [CPUフレームグラフ](https://deeeet.com/writing/2016/05/29/go-flame-graph/)
+  - Golangでフレームグラフ https://github.com/uber-archive/go-torch
+    - やってみた https://github.com/mzeand/code-examples/tree/main/golang/pprof-http
 #### 5.4.1.2 off-CPUのフットプリント
 - CPUプロファイルは、off-CPU問題の証拠も探せる。
   - たとえば、ファイルシステムアクセスとブロックI/O の初期化のためにCPUが使われた時間を見れば、ディスクI/Oのことがある程度わかる。
@@ -354,6 +356,7 @@ func main() {
   - I/O のプロファイリング: read(2)/write(2)/send(2)/recv(2) とその変種をトレース
   - カーネル時間分析: syscount(8) 「5.5.6 syscount」を参照
     - https://github.com/brendangregg/perf-tools/blob/master/syscount
+- システムコールからスタックトレースをたどっていくと、それを呼び出したアプリケーションのコードパスもわかる。
 ### 5.4.4 USEメソッド
 ### 5.4.5 スレッド状態の分析
 #### 5.4.5.1 9種類の状態
