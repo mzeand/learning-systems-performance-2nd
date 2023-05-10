@@ -353,6 +353,7 @@ func main() {
   - 新プロセスのトレーシング: execve(2) システムコールをトレースすると、新プロセスの実行をロギングし、実行時間が短いプロセスの問題を分析できる。
   - I/O のプロファイリング: read(2)/write(2)/send(2)/recv(2) とその変種をトレース
   - カーネル時間分析: syscount(8) 「5.5.6 syscount」を参照
+    - https://github.com/brendangregg/perf-tools/blob/master/syscount
 ### 5.4.4 USEメソッド
 ### 5.4.5 スレッド状態の分析
 #### 5.4.5.1 9種類の状態
