@@ -527,8 +527,7 @@ func main() {
   - 解決方法は、アプリケーションのコンパイラ、ランタイム、最適化やプロファイラ自体によって異なる。
 
 #### 5.6.1.1 ELF形式のバイナリ（C、C++など）
-- 👩‍💻 
-- [ELF形式](https://ja.wikipedia.org/wiki/Executable_and_Linkable_Format) ：（Executable and Linkable Format）実行ファイルおよびオブジェクトファイルのためのファイルフォーマット。コンテナフォーマットの一種。
+- 👩‍💻 [ELF形式](https://ja.wikipedia.org/wiki/Executable_and_Linkable_Format) ：（Executable and Linkable Format）実行ファイルおよびオブジェクトファイルのためのファイルフォーマット。コンテナフォーマットの一種。
 - 実行ファイルのファイルサイズを縮小するためにstrip(1) でシンボルが消去されていることがある。
   - 解決方法1: シンボルを取り除かないようにビルドプロセスを修正すれば解決できる（＝再コンパイル）
   - 解決方法2: debuginfo やBTF（BPF Type Format）のようなシンボル情報の供給源を使う
