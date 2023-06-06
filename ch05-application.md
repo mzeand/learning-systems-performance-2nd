@@ -566,6 +566,7 @@ interval:s:10 { exit(); } END { system("jmaps"); }'
   - Java: -XX:+PreserveFramePointerを指定してjava(1) を実行する。
 - 解決方法2: フレームポインタベースではないスタックウォークテクニックに切り替える
   - perf(1) はDWARF，ORC、LBR（last branch record）を使ったスタックウォークをサポートしている。
+    - 「13 章perf」の「13.9 perfrecord」参照
 ## ５.7 練習問題
 
 ### 1. 用語について以下の問いに答えなさい。
