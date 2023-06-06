@@ -611,14 +611,90 @@ start_thread
 ### 5.5.3 offcputime
 - offcputime(8)は、ブロックされoff-CPU状態になっているスレッドが使っている時間を集計し、その理由を説明するためにスタックトレースを表示するBCC、bpftrace ツール（15 章参照）である。
 
+```shell
+# offcputime 5
+Tracing off-CPU time (us) of all threads by user + kernel stack for 5 secs.
+[...]
+finish_task_switch
+schedule
+jbd2_log_wait_commit
+[...]
+[unknown]
+[unknown]
+start_thread
+- mysqld (10441)
+352107
+[...] 
+```
+- この出力は、一意なスタックトレースとそれがoff-CPU で使った時間をμ 秒単位で示している。
+- -mオプションで下限を変更できる（デフォルト 1μ秒）
+- -Mオプションで上限を変更できる
+  - 仕事待ちのスレッドやループで長くブロックされているスレッドのような見る意味のないスタックを省句ことができる。
 
 #### 5.5.3.1 off-CPU時間のフレームグラフ
-
+```shell
+# git clone https://github.com/brendangregg/FlameGraph; cd FlameGraph
+# offcputime -f 5 | ./flamegraph.pl --bgcolors=blue \
+--title="Off-CPU Time Flame Graph"> out.svg
+```
 ### 5.5.4 strace
 - strace(1) コマンドは、Linux のシステムコールトレーサーである。
 
-#### 5.5.4.1 straceのオーバーヘッド
+```shell
+mizue@apple:~$ sudo strace -ttt -T -p 941
+strace: Process 941 attached
+1686083219.121247 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.247008>
+1686083219.369315 epoll_pwait(3, [], 128, 0, NULL, 1) = 0 <0.000003>
+1686083219.369398 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.119344>
+1686083219.488788 write(5, "\0", 1)     = 1 <0.000010>
+1686083219.488940 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.276455>
+1686083219.765496 epoll_pwait(3, [], 128, 0, NULL, 1) = 0 <0.000016>
+[...]
+```
 
+  - -ttt: 単位秒、分解能μ秒で先頭欄にUnix 時間を表示する。
+  - -T: 最後のフィールドとして、システムコールの所要時間<time>を表示する。単位は秒で精度はμ秒。
+  - -p PID: トレースするプロセスのプロセスID。
+
+- -c オプションを使えば、システムコールの集計情報が得られる
+```shell
+mizue@apple:~$ sudo strace -c dd if=/dev/zero of=/dev/null bs=1k count=5000k
+^C195658+0 records in
+195658+0 records out
+200353792 bytes (200 MB, 191 MiB) copied, 16.0812 s, 12.5 MB/s
+strace: Process 211665 detached
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 50.72    0.838209           4    195659           read
+ 49.25    0.813786           4    195657           write
+  0.02    0.000336         336         1           execve
+  0.00    0.000027           3         7           mmap
+  0.00    0.000026           8         3           newfstatat
+[...]
+------ ----------- ----------- --------- --------- ----------------
+100.00    1.652465           4    391359         1 total
+
+```
+#### 5.5.4.1 straceのオーバーヘッド
+- strace(1)の現在のバージョンではブレークポイントベースのトレーシングを使っている。
+  - すべてのシステムコールの開始とリターンにブレークポイントをセットする。
+  - システムコールをよく呼び出すアプリケーションでは、パフォーマンスが桁違いに悪くなったと感じられる。
+
+```shell
+mizue@apple:~$ sudo dd if=/dev/zero of=/dev/null bs=1k count=5000k
+5120000+0 records in
+5120000+0 records out
+5242880000 bytes (5.2 GB, 4.9 GiB) copied, 2.26224 s, 2.3 GB/s
+```
+```shell
+mizue@apple:~$ sudo strace -c dd if=/dev/zero of=/dev/null bs=1k count=5000k
+^C68106+0 records in
+68105+0 records out
+69739520 bytes (70 MB, 67 MiB) copied, 5.62601 s, 12.4 MB/s
+
+```
+- perf(1)、Ftrace、BCC、bpftrace など、その他のトレーサーは、バッファを使ったトレーシングによってトレーシングのオーバーヘッドを大幅に削減して
+いる。
 ### 5.5.5 execsnoop
 - execsnoop(8)は、システム全体で新プロセスの実行をトレースするBCC、bpftrace ツールである。
 ### 5.5.6 syscount
