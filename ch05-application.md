@@ -489,18 +489,128 @@ func main() {
 ## 5.5 可観測性ツール
 ### 5.5.1 perf
 - perf(1)はLinuxの標準プロファイラで、多用途の多機能ツールである。
-
 #### 5.5.1.1 CPUプロファイリング
+- 30 秒に渡って、49Hz（-F 49、毎秒のサンプル数）ですべてのCPU（-a）のスタックトレース（-g）をサンプリングする
+
+```shell
+mizue@apple:~$ sudo perf record -F 49 -a -g -- sleep 30
+[ perf record: Woken up 3 times to write data ]
+[ perf record: Captured and wrote 1.700 MB perf.data (2940 samples) ]
+mizue@apple:~$ sudo perf script
+swapper     0 [000] 19637.564496:   20408163 cpu-clock:pppH: 
+        ffffaeb833e679c4 [unknown] ([unknown])
+        ffffaeb832eaaed4 [unknown] ([unknown])
+        ffffaeb832eab00c [unknown] ([unknown])
+        ffffaeb832eab250 [unknown] ([unknown])
+        ffffaeb833e5b3ec [unknown] ([unknown])
+[...]
+```
 #### 5.5.1.2 CPUフレームグラフ
+```shell
+mizue@apple:~/handson/FlameGraph$ sudo perf record -F 49 -a -g -- sleep 10; perf script --header > out.stacks
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 1.171 MB perf.data (980 samples) ]
+failed to open perf.data: Permission denied
+mizue@apple:~/handson/FlameGraph$ sudo ./stackcollapse-perf.pl < ../out.stacks | ./flamegraph.pl --hash > out.svg
+mizue@apple:~/handson/FlameGraph$ open out.svg
+```
+
 #### 5.5.1.3 システムコールのトレーシング
+```shell
+mizue@apple:~/handson/FlameGraph$ sudo perf trace -p $(pgrep mysqld) -o trace_mysqltxt
+mizue@apple:~/handson/FlameGraph$ head trace_mysqld.txt 
+         ? (         ): ib_log_files_g/1082  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+     0.012 ( 0.008 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77c90, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+     0.036 (10.061 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77ce8, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff76cbb608, val3: MATCH_ANY) = -1 ETIMEDOUT (Connection timed out)
+    10.110 ( 0.010 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77c90, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+         ? (         ): ib_log_fl_noti/1078  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+    10.137 (         ): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77ce8, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff76cbb608, val3: MATCH_ANY) ...
+    16.589 ( 0.013 ms): ib_log_fl_noti/1078 futex(uaddr: 0xffff8dd778d0, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+         ? (         ): ib_log_flush/1079  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+    16.616 (         ): ib_log_fl_noti/1078 futex(uaddr: 0xffff8dd77928, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff78cfb578, val3: MATCH_ANY) ...
+    16.619 ( 0.011 ms): ib_log_flush/1079 futex(uaddr: 0xffff8dd77a10, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+
+```
+
+- perfの長所
+  - オーバーヘッドを削減するためにCPU単位のバッファを使っているのでstrace(1) の現在の実装よりもかなり安全。
+  - strace(1) がプロセスの集合（普通は単一プロセス）に制限されているのに対し、perf(1) はシステム全体をトレースできる。
+  - システムコール以外のイベントもトレースできる。
+- perfの短所
+  - perf(1) はstrace(1) と比べてシステムコールの引数変換が充実していない。
 ##### 5.5.1.3.1 カーネル時間の分析
+- perf(1) の-sオプションは、システムコールの集計情報を示す。
+  - 出力はシステムコールの回数と各スレッドの所要時間を示している。
+  
+```shell
+mizue@apple:~$ sudo perf trace -s -p $(pgrep mysqld)
+^C
+ Summary of events:
+
+ ib_io_ibuf (1067), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6007.545     0.000   462.119   502.059      8.33%
+
+
+ ib_io_rd-1 (1068), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6007.168     0.000   462.090   501.935      8.33%
+
+
+ ib_io_rd-2 (1069), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6005.087     0.000   461.930   501.595      8.33%
+
+[...]
+```
 ##### 5.5.1.3.2 I/Oのプロファイリング
+- フィルタ（-e）を使って 特定の syscallをトレース
+```shell
+mizue@apple:~$ sudo perf trace -e epoll_pwait -p $(pgrep mysqld)
+         ? (         ): xpl_accept-1/1094  ... [continued]: epoll_pwait())                                      = 0
+     0.020 ( 1.071 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     1.107 ( 1.078 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     2.202 ( 1.077 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     3.296 ( 1.079 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+[...]
+```
+👩‍💻epoll_pwaitは、I/O多重化と非同期イベント処理に使用される一般的なシステムコールの一つです。
 
 ### 5.5.2 profile
 - profile(8)は、BCC（15 章参照）の時間に基づくCPUプロファイラである。
+- 10 秒間に渡って49HzですべてのCPUでサンプルを収集するprofile(8) の実行例
+```shell
+# profile -F 49 10
+Sampling at 49 Hertz of all threads by user + kernel stack for 10 secs.
+[...]
+SELECT_LEX::prepare(THD*)
+Sql_cmd_select::prepare_inner(THD*)
+Sql_cmd_dml::prepare(THD*)
+Sql_cmd_dml::execute(THD*)
+"mysql_execute_command(THD*,  bool)
+Prepared_statement::execute(String*,  bool) Prepared_statement::execute_loop(String*,  bool)
+mysqld_stmt_execute(THD*,  Prepared_statement*,  bool,  unsigned  long,  PS_PARAM*) dispatch_command(THD*,  COM_DATA  const*,  enum_server_command)
+do_command(THD*) [unknown] [unknown]
+start_thread
+-                                   mysqld  (10106)
+13
+[...]"
+```
+- この出力に含まれているスタックトレースは1個だけで、SELECT_LEX::prepare( )と同じ祖先がon-CPU
+で13 回サンプリングされたことを示している。
 
 ### 5.5.3 offcputime
 - offcputime(8)は、ブロックされoff-CPU状態になっているスレッドが使っている時間を集計し、その理由を説明するためにスタックトレースを表示するBCC、bpftrace ツール（15 章参照）である。
+
 
 #### 5.5.3.1 off-CPU時間のフレームグラフ
 
