@@ -697,6 +697,21 @@ mizue@apple:~$ sudo strace -c dd if=/dev/zero of=/dev/null bs=1k count=5000k
 いる。
 ### 5.5.5 execsnoop
 - execsnoop(8)は、システム全体で新プロセスの実行をトレースするBCC、bpftrace ツールである。
+- CPUリソースを大食いする短命なプロセスによる問題を見つけられるほか、アプリケーションの起動スク
+リプトを含むソフトウェアの起動のデバッグに使える。
+
+- apt版は `execsnoop-bpfcc`
+```shell
+mizue@apple:~$ sudo execsnoop-bpfcc
+PCOMM            PID    PPID   RET ARGS
+getent           224456 935      0 /usr/bin/getent group microk8s
+chmod            224457 935      0 /snap/microk8s/5324/bin/chmod -R ug+rwX /var/snap/microk8s/5324/var/kubernetes/backend
+chgrp            224458 935      0 /snap/microk8s/5324/bin/chgrp microk8s -R /var/snap/microk8s/5324/var/kubernetes/backend
+chgrp            224459 935      0 /snap/microk8s/5324/bin/chgrp microk8s /var/snap/microk8s/common/run/containerd.sock
+grep             224460 935      0 /snap/microk8s/5324/bin/grep -E  /var/snap/microk8s/5324/args/kube-apiserver
+ip               224461 935      0 /snap/microk8s/5324/sbin/ip route
+[...]
+```
 ### 5.5.6 syscount
 - syscount(8)は、システム全体でシステムコールの回数を数えるBCC、bpftrace ツールである。
 ### 5.5.7 bpftrace
