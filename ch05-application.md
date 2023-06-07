@@ -488,18 +488,307 @@ func main() {
   - 最初にすべてのイベントを捕捉しておき、レイテンシやエラーに基づいてどれを残すかを判断する
 ## 5.5 可観測性ツール
 ### 5.5.1 perf
-### 5.5.2 profile
-### 5.5.3 offcputime
-### 5.5.4 strace
-### 5.5.5 execsnoop
-### 5.5.6 syscount
-### 5.5.7 bpftrace
+- perf(1)はLinuxの標準プロファイラで、多用途の多機能ツールである。
+#### 5.5.1.1 CPUプロファイリング
+- 30 秒に渡って、49Hz（-F 49、毎秒のサンプル数）ですべてのCPU（-a）のスタックトレース（-g）をサンプリングする
 
+```shell
+mizue@apple:~$ sudo perf record -F 49 -a -g -- sleep 30
+[ perf record: Woken up 3 times to write data ]
+[ perf record: Captured and wrote 1.700 MB perf.data (2940 samples) ]
+mizue@apple:~$ sudo perf script
+swapper     0 [000] 19637.564496:   20408163 cpu-clock:pppH: 
+        ffffaeb833e679c4 [unknown] ([unknown])
+        ffffaeb832eaaed4 [unknown] ([unknown])
+        ffffaeb832eab00c [unknown] ([unknown])
+        ffffaeb832eab250 [unknown] ([unknown])
+        ffffaeb833e5b3ec [unknown] ([unknown])
+[...]
+```
+#### 5.5.1.2 CPUフレームグラフ
+```shell
+mizue@apple:~/handson/FlameGraph$ sudo perf record -F 49 -a -g -- sleep 10; perf script --header > out.stacks
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 1.171 MB perf.data (980 samples) ]
+failed to open perf.data: Permission denied
+mizue@apple:~/handson/FlameGraph$ sudo ./stackcollapse-perf.pl < ../out.stacks | ./flamegraph.pl --hash > out.svg
+mizue@apple:~/handson/FlameGraph$ open out.svg
+```
+
+#### 5.5.1.3 システムコールのトレーシング
+```shell
+mizue@apple:~/handson/FlameGraph$ sudo perf trace -p $(pgrep mysqld) -o trace_mysqltxt
+mizue@apple:~/handson/FlameGraph$ head trace_mysqld.txt 
+         ? (         ): ib_log_files_g/1082  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+     0.012 ( 0.008 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77c90, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+     0.036 (10.061 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77ce8, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff76cbb608, val3: MATCH_ANY) = -1 ETIMEDOUT (Connection timed out)
+    10.110 ( 0.010 ms): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77c90, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+         ? (         ): ib_log_fl_noti/1078  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+    10.137 (         ): ib_log_files_g/1082 futex(uaddr: 0xffff8dd77ce8, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff76cbb608, val3: MATCH_ANY) ...
+    16.589 ( 0.013 ms): ib_log_fl_noti/1078 futex(uaddr: 0xffff8dd778d0, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+         ? (         ): ib_log_flush/1079  ... [continued]: futex())                                            = -1 ETIMEDOUT (Connection timed out)
+    16.616 (         ): ib_log_fl_noti/1078 futex(uaddr: 0xffff8dd77928, op: WAIT_BITSET|PRIVATE_FLAG, utime: 0xffff78cfb578, val3: MATCH_ANY) ...
+    16.619 ( 0.011 ms): ib_log_flush/1079 futex(uaddr: 0xffff8dd77a10, op: WAKE|PRIVATE_FLAG, val: 1)           = 0
+
+```
+
+- perfの長所
+  - オーバーヘッドを削減するためにCPU単位のバッファを使っているのでstrace(1) の現在の実装よりもかなり安全。
+  - strace(1) がプロセスの集合（普通は単一プロセス）に制限されているのに対し、perf(1) はシステム全体をトレースできる。
+  - システムコール以外のイベントもトレースできる。
+- perfの短所
+  - perf(1) はstrace(1) と比べてシステムコールの引数変換が充実していない。
+##### 5.5.1.3.1 カーネル時間の分析
+- perf(1) の-sオプションは、システムコールの集計情報を示す。
+  - 出力はシステムコールの回数と各スレッドの所要時間を示している。
+  
+```shell
+mizue@apple:~$ sudo perf trace -s -p $(pgrep mysqld)
+^C
+ Summary of events:
+
+ ib_io_ibuf (1067), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6007.545     0.000   462.119   502.059      8.33%
+
+
+ ib_io_rd-1 (1068), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6007.168     0.000   462.090   501.935      8.33%
+
+
+ ib_io_rd-2 (1069), 26 events, 0.6%
+
+   syscall            calls  errors  total       min       avg       max       stddev
+                                     (msec)    (msec)    (msec)    (msec)        (%)
+   --------------- --------  ------ -------- --------- --------- ---------     ------
+   io_getevents          13      0  6005.087     0.000   461.930   501.595      8.33%
+
+[...]
+```
+##### 5.5.1.3.2 I/Oのプロファイリング
+- フィルタ（-e）を使って 特定の syscallをトレース
+```shell
+mizue@apple:~$ sudo perf trace -e epoll_pwait -p $(pgrep mysqld)
+         ? (         ): xpl_accept-1/1094  ... [continued]: epoll_pwait())                                      = 0
+     0.020 ( 1.071 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     1.107 ( 1.078 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     2.202 ( 1.077 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+     3.296 ( 1.079 ms): xpl_accept-1/1094 epoll_pwait(epfd: 17, events: 0xaaaadf32e980, maxevents: 32, timeout: 1, sigsetsize: 8) = 0
+[...]
+```
+👩‍💻epoll_pwaitは、I/O多重化と非同期イベント処理に使用される一般的なシステムコールの一つです。
+
+### 5.5.2 profile
+- profile(8)は、BCC（15 章参照）の時間に基づくCPUプロファイラである。
+- 10 秒間に渡って49HzですべてのCPUでサンプルを収集するprofile(8) の実行例
+
+```shell
+# Ubuntu でのインストール
+apt-get install bpfcc-tools
+```
+
+```shell
+mizue@apple:~$ sudo profile-bpfcc -F 49 10
+Sampling at 49 Hertz of all threads by user + kernel stack for 10 secs.
+
+[...]
+    b'handle_mm_fault'
+    b'do_page_fault'
+    b'do_translation_fault'
+    b'do_mem_abort'
+    b'el0_da'
+    b'el0t_64_sync_handler'
+    b'el0t_64_sync'
+    [unknown]
+    [unknown]
+    [unknown]
+    [unknown]
+    [unknown]
+    -                mysql (297019)
+        1
+[...]
+
+```
+- この出力に含まれているスタックトレースは1個だけで、SELECT_LEX::prepare( )と同じ祖先がon-CPU
+で13 回サンプリングされたことを示している。
+
+### 5.5.3 offcputime
+- offcputime(8)は、ブロックされoff-CPU状態になっているスレッドが使っている時間を集計し、その理由を説明するためにスタックトレースを表示するBCC、bpftrace ツール（15 章参照）である。
+
+```shell
+# offcputime 5
+Tracing off-CPU time (us) of all threads by user + kernel stack for 5 secs.
+[...]
+finish_task_switch
+schedule
+jbd2_log_wait_commit
+[...]
+[unknown]
+[unknown]
+start_thread
+- mysqld (10441)
+352107
+[...] 
+```
+- この出力は、一意なスタックトレースとそれがoff-CPU で使った時間をμ 秒単位で示している。
+- -mオプションで下限を変更できる（デフォルト 1μ秒）
+- -Mオプションで上限を変更できる
+  - 仕事待ちのスレッドやループで長くブロックされているスレッドのような見る意味のないスタックを省句ことができる。
+
+```shell
+mizue@apple:~$ sudo offcputime-bpfcc 5
+cannot attach kprobe, probe entry may not exist
+Traceback (most recent call last):
+  File "/usr/sbin/offcputime-bpfcc", line 234, in <module>
+    b.attach_kprobe(event="finish_task_switch", fn_name="oncpu")
+  File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 683, in attach_kprobe
+    raise Exception("Failed to attach BPF program %s to kprobe %s" %
+Exception: Failed to attach BPF program b'oncpu' to kprobe b'finish_task_switch'
+```
+#### 5.5.3.1 off-CPU時間のフレームグラフ
+```shell
+# git clone https://github.com/brendangregg/FlameGraph; cd FlameGraph
+# offcputime -f 5 | ./flamegraph.pl --bgcolors=blue \
+--title="Off-CPU Time Flame Graph"> out.svg
+```
+### 5.5.4 strace
+- strace(1) コマンドは、Linux のシステムコールトレーサーである。
+
+```shell
+mizue@apple:~$ sudo strace -ttt -T -p 941
+strace: Process 941 attached
+1686083219.121247 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.247008>
+1686083219.369315 epoll_pwait(3, [], 128, 0, NULL, 1) = 0 <0.000003>
+1686083219.369398 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.119344>
+1686083219.488788 write(5, "\0", 1)     = 1 <0.000010>
+1686083219.488940 futex(0x148fac8, FUTEX_WAIT_PRIVATE, 0, NULL) = 0 <0.276455>
+1686083219.765496 epoll_pwait(3, [], 128, 0, NULL, 1) = 0 <0.000016>
+[...]
+```
+
+  - -ttt: 単位秒、分解能μ秒で先頭欄にUnix 時間を表示する。
+  - -T: 最後のフィールドとして、システムコールの所要時間<time>を表示する。単位は秒で精度はμ秒。
+  - -p PID: トレースするプロセスのプロセスID。
+
+- -c オプションを使えば、システムコールの集計情報が得られる
+```shell
+mizue@apple:~$ sudo strace -c dd if=/dev/zero of=/dev/null bs=1k count=5000k
+^C195658+0 records in
+195658+0 records out
+200353792 bytes (200 MB, 191 MiB) copied, 16.0812 s, 12.5 MB/s
+strace: Process 211665 detached
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 50.72    0.838209           4    195659           read
+ 49.25    0.813786           4    195657           write
+  0.02    0.000336         336         1           execve
+  0.00    0.000027           3         7           mmap
+  0.00    0.000026           8         3           newfstatat
+[...]
+------ ----------- ----------- --------- --------- ----------------
+100.00    1.652465           4    391359         1 total
+
+```
+#### 5.5.4.1 straceのオーバーヘッド
+- strace(1)の現在のバージョンではブレークポイントベースのトレーシングを使っている。
+  - すべてのシステムコールの開始とリターンにブレークポイントをセットする。
+  - システムコールをよく呼び出すアプリケーションでは、パフォーマンスが桁違いに悪くなったと感じられる。
+
+```shell
+mizue@apple:~$ sudo dd if=/dev/zero of=/dev/null bs=1k count=5000k
+5120000+0 records in
+5120000+0 records out
+5242880000 bytes (5.2 GB, 4.9 GiB) copied, 2.26224 s, 2.3 GB/s
+```
+```shell
+mizue@apple:~$ sudo strace -c dd if=/dev/zero of=/dev/null bs=1k count=5000k
+^C68106+0 records in
+68105+0 records out
+69739520 bytes (70 MB, 67 MiB) copied, 5.62601 s, 12.4 MB/s
+
+```
+- perf(1)、Ftrace、BCC、bpftrace など、その他のトレーサーは、バッファを使ったトレーシングによってトレーシングのオーバーヘッドを大幅に削減して
+いる。
+### 5.5.5 execsnoop
+- execsnoop(8)は、システム全体で新プロセスの実行をトレースするBCC、bpftrace ツールである。
+- CPUリソースを大食いする短命なプロセスによる問題を見つけられるほか、アプリケーションの起動スク
+リプトを含むソフトウェアの起動のデバッグに使える。
+
+- apt版は `execsnoop-bpfcc`
+```shell
+mizue@apple:~$ sudo execsnoop-bpfcc
+PCOMM            PID    PPID   RET ARGS
+getent           224456 935      0 /usr/bin/getent group microk8s
+chmod            224457 935      0 /snap/microk8s/5324/bin/chmod -R ug+rwX /var/snap/microk8s/5324/var/kubernetes/backend
+chgrp            224458 935      0 /snap/microk8s/5324/bin/chgrp microk8s -R /var/snap/microk8s/5324/var/kubernetes/backend
+chgrp            224459 935      0 /snap/microk8s/5324/bin/chgrp microk8s /var/snap/microk8s/common/run/containerd.sock
+grep             224460 935      0 /snap/microk8s/5324/bin/grep -E  /var/snap/microk8s/5324/args/kube-apiserver
+ip               224461 935      0 /snap/microk8s/5324/sbin/ip route
+[...]
+```
+### 5.5.6 syscount
+- syscount(8)は、システム全体でシステムコールの回数を数えるBCC、bpftrace ツールである。
+### 5.5.7 bpftrace
+#### 5.5.7.1 シグナルのトレーシング
+#### 5.5.7.2 I/Oのプロファイリング
+#### 5.5.7.3 ロックのトレーシング
+#### 5.5.7.4 アプリケーションの内部
 
 ## 5.6 注意点
+- アプリケーションのパフォーマンス分析でよくぶつかる問題のうち、不明なシンボルと不明なスタックトレースについて取り上げる。
+  - 関数名がわからない、スタックトレースが取れない・・など
 ### 5.6.1 不明なシンボル
-### 5.6.2 不明なスタック
+- アプリケーションの命令アドレスから関数名（シンボル）を導き出せない場合、命令アドレスを16 進数で表示したり[unknown] と表示したりすることがある。
+  - 解決方法は、アプリケーションのコンパイラ、ランタイム、最適化やプロファイラ自体によって異なる。
 
+#### 5.6.1.1 ELF形式のバイナリ（C、C++など）
+- 👩‍💻 [ELF形式](https://ja.wikipedia.org/wiki/Executable_and_Linkable_Format) ：（Executable and Linkable Format）実行ファイルおよびオブジェクトファイルのためのファイルフォーマット。コンテナフォーマットの一種。
+- 実行ファイルのファイルサイズを縮小するためにstrip(1) でシンボルが消去されていることがある。
+  - 解決方法1: シンボルを取り除かないようにビルドプロセスを修正すれば解決できる（＝再コンパイル）
+  - 解決方法2: debuginfo やBTF（BPF Type Format）のようなシンボル情報の供給源を使う
+    - debuginfo: デバッグ情報が入っているリポジトリ
+      - 参考) https://www.kimullaa.com/posts/202002020611/#gdb-%E3%81%A7%E3%81%AE%E4%BD%BF%E3%81%84%E6%96%B9
+    - BTF（BPF Type Format）: 
+      - 参考) https://atmarkit.itmedia.co.jp/ait/articles/2008/04/news004.html
+#### 5.6.1.2 JITランタイム（Java、Node.jsなど）
+- JIT（just-in-time）コンパイラランタイムでは、一般にシンボルが失われる。
+  - 一般にランタイムが生成する補助的なシンボルテーブルを使って解決する。
+  - このシンボルテーブルは/tmp/perf-<PID>.map ファイルに格納され、perf(1)、BCCの両方から読み出される。
+    - [perf-map-agent](https://github.com/jvm-profiling-tools/perf-map-agent)
+    - [jmaps](https://github.com/brendangregg/FlameGraph/blob/master/jmaps)
+
+```shell
+# perf record -F 49 -a -g -- sleep 10; jmaps
+# perf script --header > out.stacks
+# [...]
+```
+
+```shell
+# bpftrace --unsafe -e 'profile:hz:49 { @[ustack] = count(); }
+interval:s:10 { exit(); } END { system("jmaps"); }'
+```
+### 5.6.2 不明なスタック
+- 残念ながら不完全なスタックトレースは非常に多い。
+- 要因
+  - 可観測性ツールが __フレームポインタ__ ベースのアプローチを使ってスタックトレースを読むが、
+  - コンパイラによるパフォーマンスの最適化のために、ターゲットバイナリが __フレームポインタ__ 用のレジスタ（x86_64 ではRBP）を予約しておらず、そのレジスタを汎用レジスタとして使い回しているため
+    - その結果
+      - [unknown] が表示される。
+      - 間違った関数名が含まれる。
+- 👩‍💻フレームポインタ：関数のリターンアドレスを格納しておく（参考 [コールスタック](https://ja.wikipedia.org/wiki/%E3%82%B3%E3%83%BC%E3%83%AB%E3%82%B9%E3%82%BF%E3%83%83%E3%82%AF)）
+- 解決方法1: フレームポインタを保持するように再コンパイルする（若干のパフォーマンス低下あり）
+  - C/C++、その他gcc(1) やLLVM でコンパイルされるソフトウェアの場合:-fno-omit-framepointerを指定してソフトウェアをコンパイルし直す。
+  - Java: -XX:+PreserveFramePointerを指定してjava(1) を実行する。
+- 解決方法2: フレームポインタベースではないスタックウォークテクニックに切り替える
+  - perf(1) はDWARF，ORC、LBR（last branch record）を使ったスタックウォークをサポートしている。
+    - 「13 章perf」の「13.9 perfrecord」参照
 ## ５.7 練習問題
 
 ### 1. 用語について以下の問いに答えなさい。
