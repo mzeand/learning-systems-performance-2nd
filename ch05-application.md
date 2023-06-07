@@ -735,6 +735,36 @@ ip               224461 935      0 /snap/microk8s/5324/sbin/ip route
 ```
 ### 5.5.6 syscount
 - syscount(8)は、システム全体でシステムコールの回数を数えるBCC、bpftrace ツールである。
+
+```shell
+mizue@apple:~$ sudo syscount-bpfcc
+Tracing syscalls, printing top 10... Ctrl+C to quit.
+^C[00:27:13]
+SYSCALL                   COUNT
+epoll_pwait               15042
+futex                     11836
+read                       9975
+newfstatat                 6317
+openat                     6025
+close                      4419
+mmap                       3616
+nanosleep                  3278
+rt_sigaction               3019
+write                      2873
+
+Detaching...
+
+```
+
+```shell
+# 以下のエラーが出たら
+[...]
+Exception: ausyscall: command not found
+
+# これをインストールする
+# 監査パッケージ
+sudo apt-get install auditd
+```
 ### 5.5.7 bpftrace
 #### 5.5.7.1 シグナルのトレーシング
 #### 5.5.7.2 I/Oのプロファイリング
