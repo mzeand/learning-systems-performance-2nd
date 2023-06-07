@@ -616,8 +616,6 @@ Sampling at 49 Hertz of all threads by user + kernel stack for 10 secs.
 [...]
 
 ```
-- この出力に含まれているスタックトレースは1個だけで、SELECT_LEX::prepare( )と同じ祖先がon-CPU
-で13 回サンプリングされたことを示している。
 
 ### 5.5.3 offcputime
 - offcputime(8)は、ブロックされoff-CPU状態になっているスレッドが使っている時間を集計し、その理由を説明するためにスタックトレースを表示するBCC、bpftrace ツール（15 章参照）である。
