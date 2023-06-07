@@ -588,22 +588,33 @@ mizue@apple:~$ sudo perf trace -e epoll_pwait -p $(pgrep mysqld)
 ### 5.5.2 profile
 - profile(8)は、BCC（15 章参照）の時間に基づくCPUプロファイラである。
 - 10 秒間に渡って49HzですべてのCPUでサンプルを収集するprofile(8) の実行例
+
 ```shell
-# profile -F 49 10
+# Ubuntu でのインストール
+apt-get install bpfcc-tools
+```
+
+```shell
+mizue@apple:~$ sudo profile-bpfcc -F 49 10
 Sampling at 49 Hertz of all threads by user + kernel stack for 10 secs.
+
 [...]
-SELECT_LEX::prepare(THD*)
-Sql_cmd_select::prepare_inner(THD*)
-Sql_cmd_dml::prepare(THD*)
-Sql_cmd_dml::execute(THD*)
-"mysql_execute_command(THD*,  bool)
-Prepared_statement::execute(String*,  bool) Prepared_statement::execute_loop(String*,  bool)
-mysqld_stmt_execute(THD*,  Prepared_statement*,  bool,  unsigned  long,  PS_PARAM*) dispatch_command(THD*,  COM_DATA  const*,  enum_server_command)
-do_command(THD*) [unknown] [unknown]
-start_thread
--                                   mysqld  (10106)
-13
-[...]"
+    b'handle_mm_fault'
+    b'do_page_fault'
+    b'do_translation_fault'
+    b'do_mem_abort'
+    b'el0_da'
+    b'el0t_64_sync_handler'
+    b'el0t_64_sync'
+    [unknown]
+    [unknown]
+    [unknown]
+    [unknown]
+    [unknown]
+    -                mysql (297019)
+        1
+[...]
+
 ```
 - この出力に含まれているスタックトレースは1個だけで、SELECT_LEX::prepare( )と同じ祖先がon-CPU
 で13 回サンプリングされたことを示している。
@@ -631,6 +642,16 @@ start_thread
 - -Mオプションで上限を変更できる
   - 仕事待ちのスレッドやループで長くブロックされているスレッドのような見る意味のないスタックを省句ことができる。
 
+```shell
+mizue@apple:~$ sudo offcputime-bpfcc 5
+cannot attach kprobe, probe entry may not exist
+Traceback (most recent call last):
+  File "/usr/sbin/offcputime-bpfcc", line 234, in <module>
+    b.attach_kprobe(event="finish_task_switch", fn_name="oncpu")
+  File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 683, in attach_kprobe
+    raise Exception("Failed to attach BPF program %s to kprobe %s" %
+Exception: Failed to attach BPF program b'oncpu' to kprobe b'finish_task_switch'
+```
 #### 5.5.3.1 off-CPU時間のフレームグラフ
 ```shell
 # git clone https://github.com/brendangregg/FlameGraph; cd FlameGraph
