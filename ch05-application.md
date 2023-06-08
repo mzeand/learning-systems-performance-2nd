@@ -735,12 +735,114 @@ ip               224461 935      0 /snap/microk8s/5324/sbin/ip route
 ```
 ### 5.5.6 syscount
 - syscount(8)は、システム全体でシステムコールの回数を数えるBCC、bpftrace ツールである。
-### 5.5.7 bpftrace
-#### 5.5.7.1 シグナルのトレーシング
-#### 5.5.7.2 I/Oのプロファイリング
-#### 5.5.7.3 ロックのトレーシング
-#### 5.5.7.4 アプリケーションの内部
 
+```shell
+mizue@apple:~$ sudo syscount-bpfcc
+Tracing syscalls, printing top 10... Ctrl+C to quit.
+^C[00:27:13]
+SYSCALL                   COUNT
+epoll_pwait               15042
+futex                     11836
+read                       9975
+newfstatat                 6317
+openat                     6025
+close                      4419
+mmap                       3616
+nanosleep                  3278
+rt_sigaction               3019
+write                      2873
+
+Detaching...
+
+```
+
+```shell
+mizue@apple:~$ sudo syscount-bpfcc -P
+Tracing syscalls, printing top 10... Ctrl+C to quit.
+^C[00:32:33]
+PID    COMM               COUNT
+1526   kubelite            9958
+941    k8s-dqlite          1936
+1050   mysqld              1790
+330833 [unknown]           1746
+330834 [unknown]           1667
+330790 [unknown]           1647
+330850 [unknown]           1642
+330832 [unknown]           1614
+330798 [unknown]           1494
+330794 [unknown]           1493
+
+Detaching...
+
+```
+
+```shell
+# 以下のエラーが出たら
+[...]
+Exception: ausyscall: command not found
+
+# これをインストールする
+# 監査パッケージ
+sudo apt-get install auditd
+```
+### 5.5.7 bpftrace
+- 高水準プログラミング言語を提供するBPFベースのトレーサーで、強力な1 行プログラムや短いスクリプトを作れる。ほかのツールから得られた手がかりに基づくカスタムアプリケーション分析に適
+している。
+#### 5.5.7.1 シグナルのトレーシング
+- 次のbpftrace の1 行プログラムは、プロセスのシグナル（kill(2) システムコールによるもの）をトレースし、ソースのPIDとプロセス名、デスティネーションのPID、シグナル番号を表示する。
+
+
+```shell
+# bpftrace -e 't:syscalls:sys_enter_kill { time("%H:%M:%S ");
+printf("%s (PID %d) send a SIG %d to PID %d\n",
+comm, pid, args->sig, args->pid); }'
+Attaching 1 probe...
+09:07:59 bash (PID 9723) send a SIG 2 to PID 9723
+09:08:00 systemd-journal (PID 214) send a SIG 0 to PID 501
+09:08:00 systemd-journal (PID 214) send a SIG 0 to PID 550
+09:08:00 systemd-journal (PID 214) send a SIG 0 to PID 392
+...
+```
+
+```shell
+# 仮想環境では有効にできない...
+mizue@apple:~$ sudo bpftrace -e 't:syscalls:sys_enter_kill { time("%H:%M:%S "); printf("%s (PID %d) send a SIG %d to PID %d\n", comm, pid, args->sig, args->pid); }'
+Kernel lockdown is enabled and set to 'confidentiality'. Lockdown mode blocks
+parts of BPF which makes it impossible for bpftrace to function. Please see 
+https://github.com/iovisor/bpftrace/blob/master/INSTALL.md#disable-lockdown
+for more details on lockdown and how to disable it.
+```
+#### 5.5.7.2 I/Oのプロファイリング
+
+- bpftraceは、サイズ、レイテンシ、戻り値、スタックトレースといったさまざまな側面からI/Oを分析できる。
+- recvfrom(2)のバッファサイズをヒストグラムの形で表示。
+```shell
+# bpftrace -e 't:syscalls:sys_enter_recvfrom { @bytes = hist(args->size); }'
+Attaching 1 probe...
+^C
+@bytes:
+[4, 8) 40142 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[8, 16) 1218 |@ |
+[16, 32) 17042 |@@@@@@@@@@@@@@@@@@@@@@ |
+[32, 64) 0 | |
+[64, 128) 0 | |
+[128, 256) 0 | |
+[256, 512) 0 | |
+[512, 1K) 0 | |
+[1K, 2K) 0 | |
+[2K, 4K) 0 | |
+[4K, 8K) 0 | |
+[8K, 16K) 0 | |
+```
+#### 5.5.7.3 ロックのトレーシング
+- bpftrace を使えば、アプリケーションのロック競合もさまざまな形で調べられる。
+- Brendan Gregg氏作、pthread(POSIX標準のスレッド)ライブラリ関数をインストルメンテーションするbpftrace ツール
+  - pmlock(8) [GitHub](https://github.com/brendangregg/bpf-perf-tools-book/blob/master/originals/Ch13_Applications/pmlock.bt)
+    - pthread ミューテックスのロック時間とユーザースタックを表示する。
+  - pmheld(8) [GitHub](https://github.com/brendangregg/bpf-perf-tools-book/blob/master/originals/Ch13_Applications/pmheld.bt)
+    - ロックからアンロックまでの時間をトレースしてロックを保持している関数のスタックトレースが表示される。
+#### 5.5.7.4 アプリケーションの内部
+- アプリケーションの内部動作の概要を示すカスタムツールを作れる。
 ## 5.6 注意点
 - アプリケーションのパフォーマンス分析でよくぶつかる問題のうち、不明なシンボルと不明なスタックトレースについて取り上げる。
   - 関数名がわからない、スタックトレースが取れない・・など
