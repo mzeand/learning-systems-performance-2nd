@@ -117,6 +117,103 @@
   - [Ubuntu fsync(2)](https://manpages.ubuntu.com/manpages/impish/ja/man2/fsync.2.html)
 
 ### 8.3.8 Raw I/OとDirect I/O
+- Raw I/O
+  - ファイルシステムを素通りしてディスクオフセットに直接発行される。
+  - ファイルシステムより上手くキャッシュ管理できるアプリケーションで使われる。
+    - データベースシステムなど
+    - ソフトウェアが複雑になる、管理が難しくなる、などの欠点がある。
+- Direct I/O
+  - ファイルシステムを使いつつ、ファイルシステムキャッシュをバイパスできるようにする。
+  - キャッシング、バッファリング、プリフェッチを無効にする。
+  - LinuxでO_DIRECTフラグを指定してopen(2)を呼び出すことで可能になる。
+    - [Ubuntu open(2)](https://manpages.ubuntu.com/manpages/impish/ja/man2/open.2.html)
+  - アライメントされたバッファ領域に対してブロックサイズの倍数でアクセスする必要がある。
+    - 👩‍💻 ChatGPTにサンプルプログラムを書いてもらった。
+```c
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main() {
+    const char* filename = "direct_io_example.txt";
+    const int block_size = 4096;  // ブロックサイズ (バイト単位)
+    const int num_blocks = 5;     // 書き込むブロック数
+
+    // ファイルをO_DIRECTフラグで開く
+    int fd = open(filename, O_CREAT | O_WRONLY | O_DIRECT, 0644);
+    if (fd == -1) {
+        perror("Failed to open file");
+        return 1;
+    }
+
+    // ブロックサイズにアラインメントするためのアドレスを用意する
+    void* write_buffer;
+    if (posix_memalign(&write_buffer, block_size, block_size) != 0) {
+        perror("Memory allocation error");
+        close(fd);
+        return 1;
+    }
+
+    // 書き込むデータを用意する
+    for (int i = 0; i < block_size; ++i) {
+        ((char*)write_buffer)[i] = 'A' + (i % 26);  // アルファベットを書き込む
+    }
+
+    // データを書き込む
+    for (int i = 0; i < num_blocks; ++i) {
+        ssize_t bytes_written = write(fd, write_buffer, block_size);
+        if (bytes_written != block_size) {
+            perror("Write error");
+            close(fd);
+            free(write_buffer);
+            return 1;
+        }
+    }
+
+    // ファイルを閉じる
+    close(fd);
+    free(write_buffer);
+
+    // 書き込んだデータを読み込む
+    fd = open(filename, O_RDONLY | O_DIRECT);
+    if (fd == -1) {
+        perror("Failed to open file for reading");
+        return 1;
+    }
+
+    // バッファをアラインメントするためのアドレスを用意する
+    void* read_buffer;
+    if (posix_memalign(&read_buffer, block_size, block_size) != 0) {
+        perror("Memory allocation error");
+        close(fd);
+        return 1;
+    }
+
+    // データを読み込む
+    for (int i = 0; i < num_blocks; ++i) {
+        ssize_t bytes_read = read(fd, read_buffer, block_size);
+        if (bytes_read != block_size) {
+            perror("Read error");
+            close(fd);
+            free(read_buffer);
+            return 1;
+        }
+
+        // 読み込んだデータを処理（ここでは標準出力に出力）
+        printf("Block %d: %.*s\n", i, block_size, (char*)read_buffer);
+    }
+
+    // ファイルを閉じる
+    close(fd);
+    free(read_buffer);
+
+    return 0;
+}
+
+```
 ### 8.3.9 ノンブロッキングI/O
 ### 8.3.10 メモリマップトファイル
 ### 8.3.11 メタデータ
