@@ -369,6 +369,26 @@ int main() {
   - これらのテストにはストレージデバイスが関わっておらず、ファイルシステムソフトウェアとCPUのスピードのテストになっている。
 
 ### 8.3.14 特殊ファイルシステム
+- 一時ファイル（/tmp）
+- カーネルデバイスパス（/dev）
+- システム統計（/proc）
+- システム構成（/sys）
+
+- Linux のストレージデバイスを使わない特殊ファイルシステムのリストは、grep '^nodev' /proc/filesystems を実行すれば得られる。
+```shell
+mizue@apple:~$ grep '^nodev' /proc/filesystems 
+nodev	sysfs
+nodev	tmpfs
+nodev	bdev
+nodev	proc
+nodev	cgroup
+nodev	cgroup2
+nodev	cpuset
+nodev	devtmpfs
+nodev	configfs
+nodev	debugfs
+ :
+```
 
 ### 8.3.15 最終アクセス時刻
 
