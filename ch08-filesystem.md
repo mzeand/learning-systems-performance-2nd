@@ -545,6 +545,27 @@ nodev	debugfs
     - ディレクトリインデックス
       - hashedB-tree（HTree）追加
 #### 8.4.5.3 ext4
+- 2008年にリリースされた。
+- 追加機能
+  - エクステント（extent）: 連続的な配置を増やすことによって、シーケンシャルI/OのI/Oサイズを大きくする。
+  - プレアロケーション: fallocate(2) システムコールにより、連続的になりそうなスペースをあらかじめ確保できるようにする。
+  - 遅延アロケーション: ディスクにフラッシュされるまでブロックのアロケーションを先延ばしにして、まとまった書き込みを実現し（マルチブロックアロケータを使う）、フラグメンテーションを削減する。
+  - 高速fsck: アロケートされていないブロックとiノードエントリにマークを付け、fsck の処理時間を短縮する。
+  - 一部の機能の状態は、ファイルシステムの/sys で見られる。
+```
+mizue@apple:/sys/fs/ext4/features$ grep . *
+batched_discard:supported
+casefold:supported
+encrypted_casefold:supported
+encryption:supported
+fast_commit:supported
+lazy_itable_init:supported
+meta_bg_resize:supported
+metadata_csum_seed:supported
+test_dummy_encryption_v2:supported
+verity:supported
+```
+
 #### 8.4.5.4 XFS
 #### 8.4.5.5 ZFS
 #### 8.4.5.6 Btrfs
