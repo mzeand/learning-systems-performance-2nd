@@ -978,7 +978,30 @@ Exiting...
   - -p PID: 指定したプロセスだけをトレースする。
   - -n NAME: プロセス名にNAMEが含まれるときだけオープンを表示する。
 
+```shell
+mizue@apple:~$ sudo opensnoop-bpfcc -x -n kubelite
+PID    COMM               FD ERR PATH
+1519   kubelite           -1   2 system.slice/snap.microk8s.daemon-kubelite.service/hugetlb.2MB.current
+1519   kubelite           -1   2 system.slice/snap.microk8s.daemon-kubelite.service/rdma.current
+1519   kubelite           -1   2 pids.current
+1519   kubelite           -1   2 memory.current
+1519   kubelite           -1   2 hugetlb.2MB.current
+1519   kubelite           -1   2 rdma.current
+1519   kubelite           -1   2 /sys/fs/cgroup/cpu.weight
+1519   kubelite           -1   2 /sys/fs/cgroup/cpu.max
+1519   kubelite           -1   2 /sys/fs/cgroup/pids.max
+```
 ### 8.6.11 filetop
+- もっともひんぱんに読み書きされているファイル名を表示するBCCツール
+- ![filetop 出力例](./images/ch08/filetop.png)
+- デフォルトではREADS欄の降順で上位20個のファイルを表示する。
+- デフォルトでは通常のファイルだけを表示する。-a オプションを指定すると、TCPソケットやデバイスノードを含むすべてのファイルが表示される。
+- ワークロードの特性の把握や一般的なファイルシステムの観察のために使える
+- 使えるオプション
+  - -C: 画面を消去せず、変化の過程を出力する。
+  - -a: すべてのファイルタイプを表示する。(TCPソケットやデバイスノードを含む)
+  - -r: 行数の上限（デフォルトは20）を指定する。
+  - -p PID: 指定したプロセスだけをトレースする。
 ### 8.6.12 cachestat
 ### 8.6.13 ext4dist（xfs、zfs、btrfs、nfs）
 ### 8.6.14 ext4slower（xfs、zfs、btrfs、nfs）
