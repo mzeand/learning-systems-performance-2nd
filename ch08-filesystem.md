@@ -883,6 +883,38 @@ Linux 5.15.0-76-generic (apple) 	08/31/2023 	_aarch64_	(2 CPU)
 12:02:57 AM    106677      8608     79769         3
 ```
 ### 8.6.6 slabtop
+- カーネルのスラブキャッシュについての情報を表示する
+- スラブには次のものが含まれる可能性がある。
+  - buffer_head: バッファキャッシュが使う領域
+  - dentry: ディレクトリエントリキャッシュ
+  - inode_cache: i ノードキャッシュ
+  - ext3_inode_cache: ext3 のためのi ノードキャッシュ
+  - ext4_inode_cache: ext4 のためのi ノードキャッシュ
+  - xfs_inode: XFSのためのi ノードキャッシュ
+  - btrfs_inode: Btrfs のためのi ノードキャッシュ
+
+```shell
+mizue@apple:~$ sudo slabtop -o
+ Active / Total Objects (% used)    : 871341 / 1088837 (80.0%)
+ Active / Total Slabs (% used)      : 36232 / 36232 (100.0%)
+ Active / Total Caches (% used)     : 113 / 153 (73.9%)
+ Active / Total Size (% used)       : 247290.41K / 306225.16K (80.8%)
+ Minimum / Average / Maximum Object : 0.02K / 0.28K / 128.00K
+
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME                   
+202020 116970  57%    0.10K   5180       39     20720K buffer_head            
+163338 134163  82%    0.19K   7778       21     31112K dentry                 
+155890 132572  85%    0.02K    917      170      3668K numa_policy            
+106029  79101  74%    1.15K   3927       27    125664K ext4_inode_cache       
+    :
+ 26712  25878  96%    0.62K   2226       12     17808K inode_cache            
+    :
+     0      0   0%    1.18K      0       13         0K btrfs_inode            
+　　:
+mizue@apple:~$ 
+
+
+```
 ### 8.6.7 strace
 ### 8.6.8 fatrace
 ### 8.6.9 LatencyTOP
