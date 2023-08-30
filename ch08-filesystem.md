@@ -1098,7 +1098,37 @@ TIME     COMM           PID    T BYTES   OFF_KB   LAT(ms) FILENAME
 ```
 
 ### 8.6.15 bpftrace
+- 高水準プログラミング言語を提供するBPFベースのトレーサーで、強力な1 行プログラムや短いスクリプトを作れる。
+
+- 👩‍💻 bpftraceの基本構文
+```shell
+bpftrace -e 'probe { action }'
+```
+  - probeはカーネルまたはプロセスイベントを指定。
+  - actionは、指定したイベントが発生した際に実行されるスクリプトやコード。
+
 #### 8.6.15.1 1行プログラム
+- openat(2) でオープンされたファイルをプロセス名付きでトレースする。
+  - sys_enter_openat: プログラム内で`openat`を呼び出したときに内部で`sys_enter_openat`が呼ばれる
+```shell
+bpftrace -e 't:syscalls:sys_enter_openat { printf("%s %s\n", comm,
+str(args->filename)); }'
+```
+
+- read( ) システムコールの要求サイズの分布をヒストグラムで示す。
+```shell
+bpftrace -e 'tracepoint:syscalls:sys_enter_read { @ = hist(args->count); }'
+```
+
+- VFS呼び出しを数える。
+```shell
+bpftrace -e 'kprobe:vfs_* { @[probe] = count(); }'
+```
+
+- ZFS spa_sync( ) 呼び出しの時刻をトレースする。
+```shell
+bpftrace -e 'kprobe:spa_sync { time("%H:%M:%S ZFS spa_sync()\n"); }'
+```
 #### 8.6.15.2 システムコールのトレース
 #### 8.6.15.3 VFSのトレーシング
 #### 8.6.15.4 ファイルシステムの内部構造
