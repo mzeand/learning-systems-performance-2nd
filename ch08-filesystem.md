@@ -867,6 +867,21 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
  :
 ```
 ### 8.6.5 sar
+- -vオプションを指定すると、次の欄が表示される。
+  - dentunusd: 未使用のディレクトリエントリキャッシュの数（利用可能エントリ数）
+  - file-nr: 使われているファイルハンドルの数
+  - inode-nr: 使われているiノードの数
+  - pty-nr: 使われている擬似端末の数
+
+```shell
+mizue@apple:~$ sudo sar -v 1
+Linux 5.15.0-76-generic (apple) 	08/31/2023 	_aarch64_	(2 CPU)
+
+12:02:54 AM dentunusd   file-nr  inode-nr    pty-nr
+12:02:55 AM    106677      8608     79769         3
+12:02:56 AM    106677      8608     79769         3
+12:02:57 AM    106677      8608     79769         3
+```
 ### 8.6.6 slabtop
 ### 8.6.7 strace
 ### 8.6.8 fatrace
