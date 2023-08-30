@@ -1130,6 +1130,50 @@ bpftrace -e 'kprobe:vfs_* { @[probe] = count(); }'
 bpftrace -e 'kprobe:spa_sync { time("%H:%M:%S ZFS spa_sync()\n"); }'
 ```
 #### 8.6.15.2 システムコールのトレース
+- システムコールには、ファイルシステムについての手がかりがないものもある。
+##### 8.6.15.2.1 openat(2)
+- うまくいく方
+```shell
+# bpftrace -e 't:syscalls:sys_enter_openat { printf("%s %s\n", comm, str(args->filename)); }'
+Attaching 1 probe...
+sa1 /etc/sysstat/sysstat
+sadc /etc/ld.so.cache
+sadc /lib/x86_64-linux-gnu/libsensors.so.5
+sadc /lib/x86_64-linux-gnu/libc.so.6
+sadc /lib/x86_64-linux-gnu/libm.so.6
+sadc /sys/class/i2c-adapter
+sadc /sys/bus/i2c/devices
+sadc /sys/class/hwmon
+sadc /etc/sensors3.conf
+[...]
+```
+##### 8.6.15.2.2 read(2)
+- うまくいかない方
+  - read(2) は、ファイルシステムの読み出しのレイテンシを知るためのトレースのターゲットとして役に立つはず
+  - -lvで引数を調べると・・ターゲットの種類を区別していない
+```shell
+# bpftrace -lv t:syscalls:sys_enter_read
+tracepoint:syscalls:sys_enter_read
+int __syscall_nr;
+unsigned int fd;
+char * buf;
+size_t count;
+```
+
+```shell
+# bpftrace -e 't:syscalls:sys_enter_read { @[comm] = count(); }'
+Attaching 1 probe...
+^C
+@[systemd-journal]: 13
+@[sshd]: 141
+@[java]: 3472
+```
+- 上記出力例では、トレース中、Java はread(2) システムコールを3,472 回呼び出しているが、ファイルシステム、ソケット、それ以外のもののどれを読み出しているのだろうか
+- 4 つの解決方法
+  - bpftrace でPIDとFDを出力し、あとでlsof(8) か/proc で実際に何なのかをルックアップする。
+  - 近く登場するBPFヘルパーのget_fd_path( ) は、FDのパス名を返せる。その他の読み出しから区別できる。
+  - 使えるデータ構造が多いVFSをトレースする。
+  - ファイルシステム関数を直接トレースすればほかのI/O タイプは含まれない。ext4dist(8) とext4slower(8) はこの方法を使っている。
 #### 8.6.15.3 VFSのトレーシング
 #### 8.6.15.4 ファイルシステムの内部構造
 ### 8.6.16 その他のツール
