@@ -796,9 +796,59 @@ verity:supported
   - ![表8-5 ファイルシステムベンチマークで予想される値](./images/ch08/table-8-5.png)
     - ディスクのベンチマークテストを行っているつもりでいても、使っているファイルサイズの合計が小さいと、その全体がキャッシュから返され、ディスクのテストにならない場合がある。
 ## 8.6 可観測性ツール
-
+- Linux ベースOS用のファイルシステム可観測性ツールを紹介する。
 ### 8.6.1 mount
+- マウントされているファイルシステムとそのマウントフラグを表示する。
+```shell
+mizue@apple:~$ mount
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+udev on /dev type devtmpfs (rw,nosuid,relatime,size=1927368k,nr_inodes=481842,mode=755,inode64)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,noexec,relatime,size=400548k,mode=755,inode64)
+efivarfs on /sys/firmware/efi/efivars type efivarfs (rw,nosuid,nodev,noexec,relatime)
+/dev/mapper/ubuntu--vg-ubuntu--lv on / type ext4 (rw,relatime)
+securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,inode64)
+ :
+```
+- [relatime](https://access.redhat.com/documentation/ja-jp/red_hat_enterprise_linux/6/html/power_management_guide/relatime): ドライブアクセス最適化
+  - 最終iノード更新時刻(ctime)、または最終ファイル更新時刻(mtime)が変更されたときか、最終アクセス時刻の最後の更新が1日以上前であるときに限り、ファイルの最終アクセス時刻(atime)を更新する
 ### 8.6.2 free
+- メモリとスワップの統計情報を表示する
+- -w: ワイド（-w）出力
+- 単位: MB（-m）
+- buffers: バッファキャッシュ
+- cache: ページキャッシュ
+- available: スワップを必要とせずにアプリケーションが使えるメモリの量。すぐに破棄できないメモリを計算に入れている。
+- これらのフィールドの内容は、/proc/meminfo でも知ることができる
+```shell
+mizue@apple:~$ free -m
+               total        used        free      shared  buff/cache   available
+Mem:            3911        1645         371          37        1894        2042
+Swap:           3910         559        3351
+mizue@apple:~$ 
+mizue@apple:~$ free -mw
+               total        used        free      shared     buffers       cache   available
+Mem:            3911        1620         400          32         222        1668        2071
+Swap:           3910         559        3351
+mizue@apple:~$ 
+mizue@apple:~$ free -wh
+               total        used        free      shared     buffers       cache   available
+Mem:           3.8Gi       1.6Gi       404Mi        32Mi       222Mi       1.6Gi       2.0Gi
+Swap:          3.8Gi       559Mi       3.3Gi
+mizue@apple:~$ 
+mizue@apple:~$ cat /proc/meminfo 
+MemTotal:        4005480 kB
+MemFree:          421888 kB
+MemAvailable:    2132104 kB
+Buffers:          227584 kB
+Cached:          1474092 kB
+SwapCached:        36600 kB
+Active:          1779516 kB
+Inactive:        1295896 kB
+　：
+```
 ### 8.6.3 top
 ### 8.6.4 vmstat
 ### 8.6.5 sar
