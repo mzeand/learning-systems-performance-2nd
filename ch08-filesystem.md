@@ -933,7 +933,37 @@ $ strace -ttT -p 845
 18:41:01.540923 read(9, "\6\2738>zw\321\353..."..., 65536) = 65536 <0.000032>
 ```
 ### 8.6.8 fatrace
+- Linux のfanotify（File Access NOTIFY）API を使う専用トレーサー
+- fatrace(1) は、ワークロードの特性を把握するために使える。アクセスされているファイルを知り、取り除ける不要な作業を探す。
+- ファイルシステムを多用するワークロードでは、CPUリソースに大きな負担をかける。
+  - イベントタイプをひとつに絞れば、このオーバーヘッドはある程度緩和できる。
+
+```shell
+mizue@apple:~$ sudo fatrace
+systemd-journal(420): W /var/log/journal/383eb0a6593e4bb9aea46cfcc1cdf3ce/system.journal
+systemd-journal(420): W /var/log/journal/383eb0a6593e4bb9aea46cfcc1cdf3ce/user-1000.journal
+kubelite(581997): O /var/snap/microk8s/common/var/lib/kubelet/pods
+kubelite(581997): RC /var/snap/microk8s/common/var/lib/kubelet/pods
+unknown(3935724): C /snap/microk8s/5705/bin/sleep
+unknown(3935724): C /snap/core18/2794/lib/aarch64-linux-gnu/ld-2.27.so
+　：
+```
 ### 8.6.9 LatencyTOP
+- プロセス全体とプロセス単位でレイテンシの原因となっているものを表示する
+- ![latencytop ファイルシステムのレイテンシが表示される出力例](./images/ch08/latencytop.png)
+  - 表示の上部はシステム全体、下部はgzip(1) の1 個のプロセスについてレイテンシの原因を示している。
+- LatencyTOP はIntel が開発したツールだが、最近は更新されておらず、しかも、あまり有効にされないカーネルオプションを必要とする。
+- イテンシの計測では、BPFトレーシングツールを使った方が簡単かもしれない
+  
+🤔 カーネルオプション CONFIG_LATENCYTOP とCONFIG_HAVE_LATENCYTOP_SUPPORT を有効にする必要がある。
+[レイテンシ最大のプロセスを特定するLatencyTOP](https://mag.osdn.jp/08/09/29/0115251)
+```shell
+mizue@apple:~$ latencytop
+mount: /sys/kernel/debug: must be superuser to use mount.
+Gtk-Message: 07:04:46.271: Failed to load module "canberra-gtk-module"
+Please enable the CONFIG_LATENCYTOP configuration in your kernel.
+Exiting...
+```
 ### 8.6.10 opensnoop
 ### 8.6.11 filetop
 ### 8.6.12 cachestat
