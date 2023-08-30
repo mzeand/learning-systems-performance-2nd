@@ -1076,6 +1076,27 @@ mizue@apple:~$
 
 ```
 ### 8.6.14 ext4slower（xfs、zfs、btrfs、nfs）
+- ext4 のよく使われるオペレーションをトレースし、指定されたしきい値よりも遅いイベントの詳細情報を表示する
+- ![ext4slower 出力例](./images/ch08/ext4slower.png)
+  - 出力には、10m秒（ext4slower(8) のデフォルトのしきい値）を超える同期オペレーション（S）がいくつか表示されている。
+  - しきい値はコマンドラインで指定できる。0m秒を指定すると、すべてのオペレーションが表示される。
+  - すべてのオペレーションをトレースすると、大量の出力が生成され、オーバーヘッドがかかる。
+
+```shell
+mizue@apple:~$ sudo ext4slower-bpfcc 0
+Tracing ext4 operations
+TIME     COMM           PID    T BYTES   OFF_KB   LAT(ms) FILENAME
+08:19:44 k8s-dqlite     928    W 4294967285 852         0.01 open-35
+08:19:44 k8s-dqlite     928    W 4294966767 852         0.05 open-35
+08:19:44 kworker/1:0    32566  S 0       0           1.53 open-35
+08:19:45 k8s-dqlite     928    W 4294967285 868         0.01 open-35
+08:19:45 k8s-dqlite     928    W 4294966767 868         0.09 open-35
+08:19:45 kworker/1:0    32566  S 0       0           1.99 open-35
+08:19:45 k8s-dqlite     928    W 4294967285 884         0.01 open-35
+08:19:45 k8s-dqlite     928    W 4294966767 884         0.07 open-35
+08:19:45 kworker/0:3    23763  S 0       0           1.69 open-35
+```
+
 ### 8.6.15 bpftrace
 #### 8.6.15.1 1行プログラム
 #### 8.6.15.2 システムコールのトレース
