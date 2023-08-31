@@ -1196,6 +1196,39 @@ Attaching 65 probes...
 @[vfs_getattr]: 7795
 ```
 ##### 8.6.15.3.2 VFSのレイテンシ
+- システムコールと同様に、VFSからの読み出しのターゲットには、ファイルシステム、ソケット、その他が含まれる。
+- 次のbpftrace プログラムは、カーネルのデータ構造（i ノードスーパーブロック名）からタイプをフェッチし、タイプ別にvfs_read( ) のレイテンシ（単位μ秒）を集計している
+```vfsreadlat.bt
+#!/usr/local/bin/bpftrace
+#include <linux/fs.h>
+
+BEGIN
+{
+  printf("Tracing vfs_read() by type... Hit Ctrl-C to end.\n");
+}
+
+kprobe:vfs_read
+{
+  @file[tid] = ((struct file *)arg0)->f_inode->i_sb->s_type->name;
+  @ts[tid] = nsecs;
+}
+
+kretprobe:vfs_read
+/@ts[tid]/
+{
+  @us[str(@file[tid])] = hist((nsecs - @ts[tid]) / 1000);
+  delete(@file[tid]); delete(@ts[tid]);
+}
+END
+
+{
+clear(@file); clear(@ts);
+}
+```
+  - このコードを理解するためには、まず「15 章BPF」の「15.2.4 プログラミング」を読むとよい
+- レイテンシーがアプリケーションに影響するかどうか
+  - ヒストグラムのキーにユーザースタックトレース（ustack）を含め
+  - vfs_read( ) 読み出しがアプリケーションの要求の過程で発生したものかどうかを見ると良い
 
 #### 8.6.15.4 ファイルシステムの内部構造
 ### 8.6.16 その他のツール
