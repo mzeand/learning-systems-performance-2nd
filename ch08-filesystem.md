@@ -1231,6 +1231,30 @@ clear(@file); clear(@ts);
   - vfs_read( ) 読み出しがアプリケーションの要求の過程で発生したものかどうかを見ると良い
 
 #### 8.6.15.4 ファイルシステムの内部構造
+- ファイルシステムの内部動作を示すカスタムツールを開発できる
+- ext4 のトレースポイントをリストアップ
+```shell
+# bpftrace -l 'tracepoint:ext4:*'
+tracepoint:ext4:ext4_other_inode_update_time
+tracepoint:ext4:ext4_free_inode
+tracepoint:ext4:ext4_request_inode
+tracepoint:ext4:ext4_allocate_inode
+tracepoint:ext4:ext4_evict_inode
+tracepoint:ext4:ext4_drop_inode
+[...]
+```
+
+- kprobe を使った動的インストルメンテーション
+```shell
+# bpftrace -lv 'kprobe:ext4_*'
+kprobe:ext4_has_free_clusters
+kprobe:ext4_validate_block_bitmap
+kprobe:ext4_get_group_number
+kprobe:ext4_get_group_no_and_offset
+kprobe:ext4_get_group_desc
+kprobe:ext4_wait_block_bitmap
+[...]
+```
 ### 8.6.16 その他のツール
 #### 8.6.16.1 ZFS
 ### 8.6.17 ビジュアライゼーション
