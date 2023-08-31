@@ -1175,6 +1175,28 @@ Attaching 1 probe...
   - 使えるデータ構造が多いVFSをトレースする。
   - ファイルシステム関数を直接トレースすればほかのI/O タイプは含まれない。ext4dist(8) とext4slower(8) はこの方法を使っている。
 #### 8.6.15.3 VFSのトレーシング
+- 仮想ファイルシステム（VFS）はすべてのファイルシステム（およびその他のデバイス）を抽象化しているので、VFS呼び出しをトレースすれば、すべてのファイルシステムをまとめて観測できる。
+##### 8.6.15.3.1 VFS呼び出しの数
+- VFS 呼び出しの回数を数えれば、使われているオペレーションのタイプの概要がわかる。
+```shell
+# bpftrace -e 'kprobe:vfs_* { @[func] = count(); }'
+Attaching 65 probes...
+^C
+[...]
+@[vfs_statfs]: 36
+@[vfs_readlink]: 164
+@[vfs_write]: 364
+@[vfs_lock_file]: 516
+@[vfs_iter_read]: 2551
+@[vfs_statx]: 3141
+@[vfs_statx_fd]: 4214
+@[vfs_open]: 5271
+@[vfs_read]: 5602
+@[vfs_getattr_nosec]: 7794
+@[vfs_getattr]: 7795
+```
+##### 8.6.15.3.2 VFSのレイテンシ
+
 #### 8.6.15.4 ファイルシステムの内部構造
 ### 8.6.16 その他のツール
 #### 8.6.16.1 ZFS
