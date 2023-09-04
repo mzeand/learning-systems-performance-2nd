@@ -1458,6 +1458,36 @@ Disk stats (read/write):
 - ワークロードモデル言語（Workload Model Language: WML）でアプリケーションのワークロードを記述してシミュレートできる。
 - FileBench は、簡単に学んで使えるツールではなく、フルタイムでファイルシステムを相手にしている人々以外は興味を持てないかもしれない。
 ### 8.7.3 キャッシュのフラッシュ
+- ファイルシステムキャッシュをフラッシュする: キャッシュからエントリを削除する
+- システムのキャッシュが「コールド」な状態でパフォーマンスをベンチマーキングするために役立つ。
+- ほかのベンチマークテストを実行する前にすべてのキャッシュ開放する(3) は、システムを同一の状態（コールドキャッシュ）でスタートさせ、ベンチマークテストで一貫性のある結果を得るために役立つ。
+
+- Documentation/sysctl/vm.txt
+```
+To free pagecache:
+（ページキャッシュを開放するには）
+echo 1 > /proc/sys/vm/drop_caches
+To free reclaimable slab objects (includes dentries and inodes):
+（回収できるスラブオブジェクト｟dentry とi ノードを含む｠を開放するには）
+echo 2 > /proc/sys/vm/drop_caches
+To free slab objects and pagecache:
+（スラブオブジェクトとページキャッシュを開放するには）
+echo 3 > /proc/sys/vm/drop_caches
+```
+
+```shell
+mizue@apple:~$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           3.8Gi       1.4Gi       1.1Gi        56Mi       1.3Gi       2.2Gi
+Swap:          3.8Gi          0B       3.8Gi
+
+mizue@apple:~$ sudo sh -c "echo 3 > /proc/sys/vm/drop_caches"
+mizue@apple:~$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           3.8Gi       1.3Gi       2.0Gi        59Mi       564Mi       2.3Gi
+Swap:          3.8Gi          0B       3.8Gi
+
+```
 
 ## 8.8 チューニング
 
