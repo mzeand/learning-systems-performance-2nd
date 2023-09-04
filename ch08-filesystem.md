@@ -1277,12 +1277,186 @@ kprobe:ext4_wait_block_bitmap
   - 設定変更によりギャップが埋められたことがこのヒートマップでわかる。
 
 ## 8.7 実験
+- この節では、ファイルシステムのパフォーマンスを実験的にテストするツールの説明。
+- これらのツールを使うときには、iostat(1) を実行し、ディスクの使用状況を確認しながら実施するとよい。
+  - 👩‍💻[iostat](https://docs.oracle.com/cd/E19253-01/819-0379/spmonitor-4/index.html)
 
 ### 8.7.1 アドホックテスト
+- dd(1) コマンド（デバイス間コピー、device-to-device copy）は、シーケンシャルファイルシステムのパフォーマンスのアドホックテストに使える。
+
+```shell
+mizue@apple:/tmp$ dd if=/dev/zero of=file1 bs=1024k count=1k
+1024+0 records in
+1024+0 records out
+1073741824 bytes (1.1 GB, 1.0 GiB) copied, 1.03971 s, 1.0 GB/s
+```
+- ファイルシステムの書き込みスループットが1.0GB/秒だということを示している
+
+```shell
+mizue@apple:/tmp$ iostat 1
+  :
+  :
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           4.50    0.00    2.00    0.00    0.00   93.50
+
+Device             tps    kB_read/s    kB_wrtn/s    kB_dscd/s    kB_read    kB_wrtn    kB_dscd
+dm-0              1.00         0.00         4.00         0.00          0          4          0
+loop0             0.00         0.00         0.00         0.00          0          0          0
+loop1             0.00         0.00         0.00         0.00          0          0          0
+loop10            0.00         0.00         0.00         0.00          0          0          0
+loop11            0.00         0.00         0.00         0.00          0          0          0
+
+  :
+  :
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           4.50    0.00   50.00    0.50    0.00   45.00
+
+Device             tps    kB_read/s    kB_wrtn/s    kB_dscd/s    kB_read    kB_wrtn    kB_dscd
+dm-0            668.00         0.00   1005240.00         0.00          0    1005240          0
+loop0             0.00         0.00         0.00         0.00          0          0          0
+loop1             0.00         0.00         0.00         0.00          0          0          0
+loop10            0.00         0.00         0.00         0.00          0          0          0
+loop11            0.00         0.00         0.00         0.00          0          0          0
+loop12            0.00         0.00         0.00         0.00          0          0          0
+loop13            0.00         0.00         0.00         0.00          0          0          0
+loop14            0.00         0.00         0.00         0.00          0          0          0
+loop15            0.00         0.00         0.00         0.00          0          0          0
+loop16            0.00         0.00         0.00         0.00          0          0          0
+loop17            0.00         0.00         0.00         0.00          0          0          0
+loop18            0.00         0.00         0.00         0.00          0          0          0
+loop19            0.00         0.00         0.00         0.00          0          0          0
+loop2             0.00         0.00         0.00         0.00          0          0          0
+loop20            0.00         0.00         0.00         0.00          0          0          0
+loop21            0.00         0.00         0.00         0.00          0          0          0
+loop22            0.00         0.00         0.00         0.00          0          0          0
+loop3             0.00         0.00         0.00         0.00          0          0          0
+loop4             0.00         0.00         0.00         0.00          0          0          0
+loop5             0.00         0.00         0.00         0.00          0          0          0
+loop6             0.00         0.00         0.00         0.00          0          0          0
+loop7             0.00         0.00         0.00         0.00          0          0          0
+loop8             0.00         0.00         0.00         0.00          0          0          0
+loop9             0.00         0.00         0.00         0.00          0          0          0
+sr0               0.00         0.00         0.00         0.00          0          0          0
+vda            1371.00         0.00   1041080.00         0.00          0    1041080          0
+
+```
+
 ### 8.7.2 マイクロベンチマークツール
 #### 8.7.2.1 Bonnie、Bonnie++
+- 単一のスレッドからの単一のファイルに対するいくつかのワークロードをテストする単純なCプログラム
+- https://www.coker.com.au/bonnie++/
+
+👩‍💻 引用 https://www.drk7.jp/MT/archives/001448.html
+- Bonnie++ インストール方法
+```shell
+mizue@apple:/tmp$ wget wget https://www.coker.com.au/bonnie++/bonnie++_1.04.tgz
+mizue@apple:/tmp$ tar -zxvf bonnie++_1.04.tgz
+mizue@apple:/tmp$ cd bonnie++-1.04
+mizue@apple:/tmp/bonnie++-1.04$ ./configure
+mizue@apple:/tmp/bonnie++-1.04$ vi bonnie.h
+
+#define MinTime (0.5)　の部分を以下のように数値を変更する
+#define MinTime (0.01)
+
+mizue@apple:/tmp/bonnie++-1.04$ make
+
+mizue@apple:/tmp/bonnie++-1.04$ ./bonnie++ ?
+usage: bonnie++ [-d scratch-dir] [-s size(MiB)[:chunk-size(b)]]
+                [-n number-to-stat[:max-size[:min-size][:num-directories]]]
+                [-m machine-name]
+                [-r ram-size-in-MiB]
+                [-x number-of-tests] [-u uid-to-use:gid-to-use] [-g gid-to-use]
+                [-q] [-f] [-b] [-p processes | -y]
+                [-D]
+
+Version: 1.04
+
+mizue@apple:/tmp/bonnie++-1.04$ ./bonnie++ -d /tmp/ -u mizue:mizue -s 512 -r 256
+Using uid:1000, gid:1000.
+Writing with putc()...done
+Writing intelligently...done
+Rewriting...done
+Reading with getc()...done
+Reading intelligently...done
+start 'em...done...done...done...
+Create files in sequential order...done.
+Stat files in sequential order...done.
+Delete files in sequential order...done.
+Create files in random order...done.
+Stat files in random order...done.
+Delete files in random order...done.
+Version  1.04       ------Sequential Output------ --Sequential Input- --Random-
+                    -Per Chr- --Block-- -Rewrite- -Per Chr- --Block-- --Seeks--
+Machine        Size K/sec %CP K/sec %CP K/sec %CP K/sec %CP K/sec %CP  /sec %CP
+apple          512M 299133  99 1843987  98 1507602  60 222701  99 6240470  99 278894 152
+                    ------Sequential Create------ --------Random Create--------
+                    -Create-- --Read--- -Delete-- -Create-- --Read--- -Delete--
+              files  /sec %CP  /sec %CP  /sec %CP  /sec %CP  /sec %CP  /sec %CP
+                 16 106053  88 1035899  97 218426  98 165821  99 1353384  97 214447  95
+apple,512M,299133,99,1843987,98,1507602,60,222701,99,6240470,99,278894.0,152,16,106053,88,1035899,97,218426,98,165821,99,1353384,97,214447,95
+
+```
+- 出力には、各テストでのCPU時間が含まれている。
+  - 100% なら、Bonnie がディスクI/O 待ちのためにブロックせず、かならずキャッシュがヒットして、on-CPU であり続けたことを示す。
+- 実装によって大きく結果が変わってしまうものをテストする場合は、何をテストしているのかよく理解する必要がある。
 #### 8.7.2.2 fio
+- fio（Flexible IO Tester）は、高度な機能を多数含むカスタマイズ可能なファイルシステムベンチマークツール。
+
+- install
+```shell
+mizue@apple:~$ sudo apt-get install fio
+  :
+  :
+mizue@apple:~$ fio --version
+fio-3.28
+```
+
+- 非一様アクセスパターン（pareto:0.9）でワーキングセットサイズが5GB、I/Oサイズが8KBのランダム読み出しワークロードの出力例
+```shell
+mizue@apple:~$ sudo fio --runtime=60 --time_based --clocksource=clock_gettime --name=randread --numjobs=1 --rw=randread --random_distribution=pareto:0.9 --bs=8k --size=5g --filename=fio.tmp
+randread: (g=0): rw=randread, bs=(R) 8192B-8192B, (W) 8192B-8192B, (T) 8192B-8192B, ioengine=psync, iodepth=1
+fio-3.28
+Starting 1 process
+randread: Laying out IO file (1 file / 5120MiB)
+Jobs: 1 (f=1): [r(1)][100.0%][r=338MiB/s][r=43.3k IOPS][eta 00m:00s]
+randread: (groupid=0, jobs=1): err= 0: pid=683594: Tue Sep  5 00:06:06 2023
+  read: IOPS=175k, BW=1368MiB/s (1434MB/s)(80.1GiB/60001msec)
+    clat (nsec): min=458, max=21130k, avg=5443.98, stdev=48051.80
+     lat (nsec): min=500, max=21130k, avg=5478.36, stdev=48086.79
+    clat percentiles (nsec):
+     |  1.00th=[    916],  5.00th=[   1288], 10.00th=[   1368],
+     | 20.00th=[   1496], 30.00th=[   1624], 40.00th=[   1752],
+     | 50.00th=[   1800], 60.00th=[   1880], 70.00th=[   1912],
+     | 80.00th=[   2040], 90.00th=[   2224], 95.00th=[   2736],
+     | 99.00th=[ 164864], 99.50th=[ 189440], 99.90th=[ 257024],
+     | 99.95th=[ 358400], 99.99th=[1859584]
+   bw (  MiB/s): min=   49, max= 3011, per=100.00%, avg=1375.81, stdev=1013.06, samples=119
+   iops        : min= 6344, max=385490, avg=176103.33, stdev=129671.13, samples=119
+  lat (nsec)   : 500=0.01%, 750=0.38%, 1000=0.76%
+  lat (usec)   : 2=74.57%, 4=20.61%, 10=1.54%, 20=0.17%, 50=0.07%
+  lat (usec)   : 100=0.34%, 250=1.45%, 500=0.08%, 750=0.01%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%, 50=0.01%
+  cpu          : usr=6.96%, sys=35.89%, ctx=206010, majf=1, minf=78
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=10503180,0,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+   READ: bw=1368MiB/s (1434MB/s), 1368MiB/s-1368MiB/s (1434MB/s-1434MB/s), io=80.1GiB (86.0GB), run=60001-60001msec
+
+Disk stats (read/write):
+    dm-0: ios=251026/25442, merge=0/0, ticks=45204/27972, in_queue=73176, util=99.33%, aggrios=235577/3009, aggrmerge=16227/22433, aggrticks=37251/2838, aggrin_queue=40166, aggrutil=99.33%
+  vda: ios=235577/3009, merge=16227/22433, ticks=37251/2838, in_queue=40166, util=99.33%
+
+```
+- fioに似ているがよりシンプルなツールとしては、SysBenchがある
 #### 8.7.2.3 FileBench
+- プログラム可能なファイルシステムベンチマークツール
+- ワークロードモデル言語（Workload Model Language: WML）でアプリケーションのワークロードを記述してシミュレートできる。
+- FileBench は、簡単に学んで使えるツールではなく、フルタイムでファイルシステムを相手にしている人々以外は興味を持てないかもしれない。
 ### 8.7.3 キャッシュのフラッシュ
 
 ## 8.8 チューニング
