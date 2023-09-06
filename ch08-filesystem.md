@@ -1490,10 +1490,110 @@ Swap:          3.8Gi          0B       3.8Gi
 ```
 
 ## 8.8 チューニング
-
+- 具体的なチューニングの方法は、OSのバージョンやファイルシステムタイプ、想定しているワークロードによって変わる。
 ### 8.8.1 アプリケーションからの呼び出し
+- パフォーマンスを向上させるその他の呼び出しとしては、posix_fadvise( ) とmadvise(2) がある。
+- これらは、キャッシングに適しているかどうかについてのヒントを提供する。
 #### 8.8.1.1 posix_fadvise( )
+👩‍💻 ChatGPT に書いてもらったサンプルプログラム
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+
+int main() {
+    const char *filename = "example.txt";
+    int fd = open(filename, O_RDONLY);
+
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    // ファイルのアドバイスを設定します。
+    if (posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM) != 0) {
+        perror("posix_fadvise");
+        close(fd);
+        return 1;
+    }
+
+    // ファイルからデータを読み取ります。
+    char buffer[4096];
+    ssize_t bytesRead;
+
+    while ((bytesRead = read(fd, buffer, sizeof(buffer))) > 0) {
+        // データを処理します。
+        // ここでは単に読み取ったデータを無視します。
+    }
+
+    if (bytesRead == -1) {
+        perror("read");
+        close(fd);
+        return 1;
+    }
+
+    close(fd);
+    return 0;
+}
+```
+> このプログラムでは、posix_fadvise()を使用してファイルアクセスパターンをPOSIX_FADV_RANDOMに設定しています。これはファイルアクセスがランダムであることをカーネルに伝えるものです。これにより、カーネルはファイルキャッシュやI/Oスケジューリングを最適化し、ランダムアクセスに適した方法でデータを読み取ることが期待されます。
+
+- アプリケーションのヒントにより、優先度の高いデータのキャッシュ率が上がる。
+- 引数の完全なリストは、システムのmanページを参照することが重要。
+  - [ubuntu posix_fadvise](https://manpages.ubuntu.com/manpages/impish/ja/man2/posix_fadvise.2.html)
 #### 8.8.1.2 madvise( )
+- はメモリマッピングの範囲を対象としてヒントを提供するもの
+- 👩‍💻 ChatGPTにサンプルプログラムを書いてもらった
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+
+int main() {
+    const char *filename = "example.txt";
+    const size_t file_size = 1024 * 1024; // 1 MB
+    char *file_data;
+
+    // メモリを確保し、ファイルを読み込みます。
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    // ファイルをメモリにマップします。
+    file_data = (char *)mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (file_data == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return 1;
+    }
+
+    // ファイルのアドバイスを設定します。
+    if (madvise(file_data, file_size, MADV_RANDOM) != 0) {
+        perror("madvise");
+        munmap(file_data, file_size);
+        close(fd);
+        return 1;
+    }
+
+    // メモリマップドファイルを処理します。
+    // ここでは単にファイルデータを無視します。
+
+    // メモリを解放し、ファイルを閉じます。
+    munmap(file_data, file_size);
+    close(fd);
+
+    return 0;
+}
+```
+> ファイルをメモリにマップして、madvise()を使用してアクセスパターンをMADV_RANDOMに設定しています。これは、ファイルへのランダムアクセスをカーネルに伝えるもので、カーネルはファイルの読み取りを最適化するためのヒントを受け取ります。
+
+- [ubuntu madvise](https://manpages.ubuntu.com/manpages/focal/ja/man2/madvise.2.html)
 ### 8.8.2 ext4
 #### 8.8.2.1 mountとtnue2fs
 #### 8.8.2.2 /sys/fsプロパティファイル
