@@ -1679,6 +1679,29 @@ mizue@apple:~$ mount | grep /dev/mapper/ubuntu--vg-ubuntu--lv
 /dev/mapper/ubuntu--vg-ubuntu--lv on /var/snap/firefox/common/host-hunspell type ext4 (ro,noexec,noatime)
 ```
 #### 8.8.2.2 /sys/fsプロパティファイル
+
+```shell
+mizue@apple:~$ ls /sys/fs/ext4/vda2/
+delayed_allocation_blocks  last_error_block       mb_prefetch
+errors_count               last_error_errcode     mb_prefetch_limit
+err_ratelimit_burst        last_error_func        mb_stats
+err_ratelimit_interval_ms  last_error_ino         mb_stream_req
+extent_max_zeroout_kb      last_error_line        msg_count
+first_error_block          last_error_time        msg_ratelimit_burst
+first_error_errcode        lifetime_write_kbytes  msg_ratelimit_interval_ms
+first_error_func           max_writeback_mb_bump  reserved_clusters
+first_error_ino            mb_group_prealloc      session_write_kbytes
+first_error_line           mb_max_inode_prealloc  sra_exceeded_retry_limit
+first_error_time           mb_max_linear_groups   trigger_fs_error
+inode_goal                 mb_max_to_scan         warning_count
+inode_readahead_blks       mb_min_to_scan         warning_ratelimit_burst
+journal_task               mb_order2_req          warning_ratelimit_interval_ms
+
+mizue@apple:~$ cat /sys/fs/ext4/vda2/inode_readahead_blks
+32
+```
+- 上記ではext4 がiノードテーブルブロックをたかだか32個しか先読みしないことを示している。
+- ここに表示されているファイルは全部チューニング可能なわけではない。
 #### 8.8.2.3 e2fsck
 ### 8.8.3 ZFS
 
