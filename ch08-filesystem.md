@@ -1543,59 +1543,141 @@ int main() {
 - アプリケーションのヒントにより、優先度の高いデータのキャッシュ率が上がる。
 - 引数の完全なリストは、システムのmanページを参照することが重要。
   - [ubuntu posix_fadvise](https://manpages.ubuntu.com/manpages/impish/ja/man2/posix_fadvise.2.html)
+
 #### 8.8.1.2 madvise( )
 - はメモリマッピングの範囲を対象としてヒントを提供するもの
 - 👩‍💻 ChatGPTにサンプルプログラムを書いてもらった
 
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
+```go
+package main
 
-int main() {
-    const char *filename = "example.txt";
-    const size_t file_size = 1024 * 1024; // 1 MB
-    char *file_data;
+import (
+    "fmt"
+    "os"
+    "syscall"
+)
 
-    // メモリを確保し、ファイルを読み込みます。
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1) {
-        perror("open");
-        return 1;
+func main() {
+    filename := "example.txt"
+    file, err := os.Open(filename)
+    if err != nil {
+        fmt.Printf("Error opening file: %v\n", err)
+        return
     }
+    defer file.Close()
+
+    fileStat, err := file.Stat()
+    if err != nil {
+        fmt.Printf("Error getting file size: %v\n", err)
+        return
+    }
+    fileSize := fileStat.Size()
 
     // ファイルをメモリにマップします。
-    file_data = (char *)mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (file_data == MAP_FAILED) {
-        perror("mmap");
-        close(fd);
-        return 1;
+    fileData, err := syscall.Mmap(int(file.Fd()), 0, int(fileSize), syscall.PROT_READ, syscall.MAP_PRIVATE)
+    if err != nil {
+        fmt.Printf("Error mapping file to memory: %v\n", err)
+        return
     }
+    defer syscall.Munmap(fileData)
 
     // ファイルのアドバイスを設定します。
-    if (madvise(file_data, file_size, MADV_RANDOM) != 0) {
-        perror("madvise");
-        munmap(file_data, file_size);
-        close(fd);
-        return 1;
+    err = syscall.Madvise(fileData, syscall.MADV_RANDOM)
+    if err != nil {
+        fmt.Printf("Error setting madvise: %v\n", err)
+        return
     }
 
     // メモリマップドファイルを処理します。
     // ここでは単にファイルデータを無視します。
 
-    // メモリを解放し、ファイルを閉じます。
-    munmap(file_data, file_size);
-    close(fd);
-
-    return 0;
+    fmt.Println("File processing completed.")
 }
 ```
 > ファイルをメモリにマップして、madvise()を使用してアクセスパターンをMADV_RANDOMに設定しています。これは、ファイルへのランダムアクセスをカーネルに伝えるもので、カーネルはファイルの読み取りを最適化するためのヒントを受け取ります。
 
 - [ubuntu madvise](https://manpages.ubuntu.com/manpages/focal/ja/man2/madvise.2.html)
+
 ### 8.8.2 ext4
 #### 8.8.2.1 mountとtnue2fs
+- マウントオプションは、マウント時にmount(8) コマンドで手作業で設定するか、ブート時に/boot/grub/menu.lst と/etc/fstab で設定する。
+- mount(8)は、relatime がデフォルトになったため、デフォルトでも最終アクセス時刻の更新は削減されている。
+  - relatime: 最終アクセス時刻は、前の最終アクセス時刻が現在の最終iノード更新時刻や最終ファイル更新時刻よりも前になっているときに限り更新される
+- ext4 の場合は、固有マウントオプションのためにext4(5) という専用のmanページがある。
+- 現在のマウント設定は、tune2fs -l deviceコマンドかmountコマンド（コマンドラインオプションなし）で見られる。
+- tune2fs(8) で、現在の設定確認、設定変更が行える。
+- [ubuntu tune2fs](https://manpages.ubuntu.com/manpages/impish/ja/man8/tune2fs.8.html)
+
+```shell
+mizue@apple:~$ df
+Filesystem                        1K-blocks      Used Available Use% Mounted on
+tmpfs                                400548     17268    383280   5% /run
+/dev/mapper/ubuntu--vg-ubuntu--lv  31270768  23908048   5748692  81% /
+tmpfs                               2002740         0   2002740   0% /dev/shm
+tmpfs                                  5120         4      5116   1% /run/lock
+/dev/vda2                           1992552    266300   1605012  15% /boot
+/dev/vda1                           1098628      6452   1092176   1% /boot/efi
+share                             482797596 213725532 269072064  45% /home/mizue/share
+tmpfs                                400548       100    400448   1% /run/user/1000
+
+mizue@apple:~$ sudo tune2fs -l /dev/mapper/ubuntu--vg-ubuntu--lv
+tune2fs 1.46.5 (30-Dec-2021)
+Filesystem volume name:   <none>
+Last mounted on:          /
+Filesystem UUID:          3b3b301c-b32b-4471-8cbc-22829b338afb
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent 64bit flex_bg sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
+Filesystem flags:         unsigned_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              1998848
+Block count:              7988224
+Reserved block count:     399411
+Overhead clusters:        170532
+Free blocks:              4100
+Free inodes:              1694268
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Group descriptor size:    64
+Reserved GDT blocks:      1024
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Wed May 17 03:23:22 2023
+Last mount time:          Tue Sep  5 01:03:53 2023
+Last write time:          Tue Sep  5 01:03:52 2023
+Mount count:              18
+Maximum mount count:      -1
+Last checked:             Wed May 17 03:23:22 2023
+Check interval:           0 (<none>)
+Lifetime writes:          153 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     32
+Desired extra isize:      32
+Journal inode:            8
+First orphan inode:       1850036
+Default directory hash:   half_md4
+Directory Hash Seed:      5d66c5c6-6e03-4cb0-87d5-3a629dfb88d0
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0xcf938861
+
+```
+
+```shell
+mizue@apple:~$ mount | grep /dev/mapper/ubuntu--vg-ubuntu--lv
+/dev/mapper/ubuntu--vg-ubuntu--lv on / type ext4 (rw,relatime)
+/dev/mapper/ubuntu--vg-ubuntu--lv on /var/snap/firefox/common/host-hunspell type ext4 (ro,noexec,noatime)
+```
 #### 8.8.2.2 /sys/fsプロパティファイル
 #### 8.8.2.3 e2fsck
 ### 8.8.3 ZFS
