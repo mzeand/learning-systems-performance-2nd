@@ -1710,7 +1710,31 @@ mizue@apple:~$ cat /sys/fs/ext4/vda2/inode_readahead_blks
 e2fsck -D -f /dev/hdX
 ```
 ### 8.8.3 ZFS
+- ZFSはファイルシステムごとに設定できるパラメータをコマンドで確認、設定することができる。
 
+```shell
+# zfs get all zones/var
+NAME PROPERTY VALUE SOURCE
+[...]
+zones/var recordsize 128K default
+zones/var mountpoint legacy local
+zones/var sharenfs off default
+zones/var checksum on default
+zones/var compression off inherited from zones
+zones/var atime off inherited from zones
+[...]
+```
+
+- [ubuntu zfs](https://manpages.ubuntu.com/manpages/focal/en/man8/zfs.8.html)
+- 一般に、もっとも重要なパラメータはレコードサイズで、アプリケーションのI/Oに合わせたものに設定する。
+- ZFSはシステム全体に対するパラメータも用意している。
+  - トランザクショングループ（TXG）の同期時間を調整するもの（zfs_txg_synctime_ms、zfs_txg_timeout）
+  - メタスラブのしきい値を時間ではなく空間に切り替えてアロケーションを最適化するもの（metaslab_df_free_pct）
+
+👩‍💻 `tank/mydataset` の `zfs_txg_timeout`を 10sに設定する場合
+```shell
+sudo zfs set zfs_txg_timeout=10s tank/mydataset
+```
 ## 8.9 練習問題
 
 1. ファイルシステムの用語についての以下の問いに答えなさい。
