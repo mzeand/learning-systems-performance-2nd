@@ -239,10 +239,11 @@ U = B/T
 ### 2.3.15 Known-Unkhowns
 - Known-Knowns: パフォーマンス指標をチェックしなければならないことを知っていて、現在の値も知っている場合。
 - Known-Unknowns: 指標をチェックできることやサブシステムが存在することはわかっているが、まだ見ていないとき。
-- Known-Unknowns: デバイスからの割り込みがCPUを大きく消費することを知らないため、デバイス割り込みをチェックしていない場合
+- Unknown-Unknowns: デバイスからの割り込みがCPUを大きく消費することを知らないため、デバイス割り込みをチェックしていない場合
 - 「システムについて知れば知るほど、Unknown-Unknowns の存在に気付き、それらはチェックできるKnown-Unknowns になる」
-- 👩‍💻 https://en.wikipedia.org/wiki/There_are_unknown_unknowns
-
+- 👩‍💻 [知られていると知られていることがある](https://medium.com/@andreamantovani/known-knowns-known-unknowns-unknown-unknowns-leadership-367f346b0953)
+- 👩‍💻 [Known unknowns](https://deeeet.com/writing/2016/05/24/known-unknowns/)
+  
 ## 2.4 視点
 ### 2.4.1 リソース分析
 ### 2.4.2 ワークロード分析
