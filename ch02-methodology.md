@@ -545,6 +545,7 @@ U = B/T
 
 ### 2.5.14 メソッドR
 - メソッドRはOracle データベースのために開発されたパフォーマンス分析メソドロジ
+  - 👩‍💻[Book : The Method R Guide to Tracing Oracle](https://oracle-base.com/blog/2023/05/22/book-the-method-r-guide-to-tracing-oracle/)
 - Oracle のイベントトレーシングに基づきレイテンシの源を見つけることに重点を置く
 - 「ビジネスのために最大限の経済的価値を生み出す応答時間ベースのパフォーマンス向上メソッド」
 - データベースの分析のために使われるものだが、アプローチはどのシステムにも応用できる。
