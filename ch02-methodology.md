@@ -560,6 +560,11 @@ U = B/T
 - レイテンシ外れ値（latency outlier）: 特に異常にレイテンシが高いイベント。そのイベント自体よりも以前のイベントによって引き起こされることがある。
   - トレースして前のイベントも検討することで特定できる。
 ### 2.5.16 ベースライン統計
+- ベースライン統計（baseline statistics）
+  - システムの負荷が「正常」なときのすべてのシステム指標を収集し、それをあとで参照できるようにする。
+  - 例えは、前週の同じ時間範囲の線を現在の折れ線グラフに追加するなど。
+- 👩‍💻[AWS CloudWatch 異常検出の使用](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html)
+- 👩‍💻[New Relic 応用インテリジェンスによる異常検出](https://docs.newrelic.com/jp/docs/alerts-applied-intelligence/applied-intelligence/anomaly-detection/anomaly-detection-applied-intelligence/)
 ### 2.5.17 静的パフォーマンスチューニング
 ### 2.5.18 キャッシュのチューニング
 ### 2.5.19 マイクロベンチマーキング
