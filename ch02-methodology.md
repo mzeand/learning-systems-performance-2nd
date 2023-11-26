@@ -770,6 +770,9 @@ xlab="Utilization %", ylab="Mean Response Time (ms)")
 ```
 
 ## 2.7 キャパシティプランニング
+- システムが負荷をどの程度うまく処理できるか、負荷が増えたときにシステムがどれぐらいスケーリングするかを検討する。
+- そのうちここではリソースの限界の検討と要素分析を取り上げる。
+- このテーマの詳細は、[The Art of Capacity Planning](https://www.amazon.co.jp/Art-Capacity-Planning-Scaling-Resources/dp/0596518579)を参照していただきたい。
 ### 2.7.1 リソースの限界
 ### 2.7.2 要素分析
 ### 2.7.3 スケーラビリティを向上させる方法
