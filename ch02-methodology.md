@@ -911,12 +911,10 @@ xlab="Utilization %", ylab="Mean Response Time (ms)")
 - Netflix クラウドは20万を超えるインスタンスから構成され、クラウドワイドモニタリングツールのAtlasによってモニタリングされている。
   - [Introducing Atlas: Netflix’s Primary Telemetry Platform](https://netflixtechblog.com/introducing-atlas-netflixs-primary-telemetry-platform-bd31f4d8ed9a)
 
-#### 2.9.3 ブート以降の集計
+### 2.9.3 ブート以降の集計
 - モニタリングが実行されていない場合
   - 少なくともOSのブート以降の集計（summary-since-boot）が見られるようしておく。
   - 現在の値と比較すると役に立つ
-
-### 2.9.3 ブート以降の集計
 
 ## 2.10 ビジュアライゼーション
 ### 2.10.1 折れ線グラフ
