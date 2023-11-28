@@ -904,6 +904,18 @@ xlab="Utilization %", ylab="Mean Response Time (ms)")
   - 毎年: 学校の日程や長期の休みによって負荷に年ごとのパターンが現れることがある。
 - 外部要因によって不定期な負荷の減少
 ### 2.9.2 モニタリングプロダクト
+- 一部のプロダクトは、システム上でエージェント（agents、エクスポータ: exporter とも呼ばれる）を実行して統計量を集めている。
+  - OSの可観測性ツール（iostat(1)、sar(1) など）を実行して出力
+- 一元管理のモニタリングプロダクト
+  - システムがさらに分散化し膨大な数のシステムをモニタリングしなければならない場合に役立つ
+- Netflix クラウドは20万を超えるインスタンスから構成され、クラウドワイドモニタリングツールのAtlasによってモニタリングされている。
+  - [Introducing Atlas: Netflix’s Primary Telemetry Platform](https://netflixtechblog.com/introducing-atlas-netflixs-primary-telemetry-platform-bd31f4d8ed9a)
+
+#### 2.9.3 ブート以降の集計
+- モニタリングが実行されていない場合
+  - 少なくともOSのブート以降の集計（summary-since-boot）が見られるようしておく。
+  - 現在の値と比較すると役に立つ
+
 ### 2.9.3 ブート以降の集計
 
 ## 2.10 ビジュアライゼーション
