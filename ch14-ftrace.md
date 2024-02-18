@@ -582,7 +582,21 @@ options/funcgraph-duration options/funcgraph-overrun
 - ts: イテレーション終了時のタイムスタンプ
 
 ## 14.10 Ftrace histトリガー
-q
+- イベントのカスタムヒストグラムを作る。
+- 手順
+1. echo 'hist:expression' > events/.../trigger: hist トリガーを作る。
+2. sleep duration: ヒストグラムを構成するデータを蓄積する。
+3. cat events/.../hist: ヒストグラムを表示する。
+4. echo '!hist:expression' > events/.../trigger: hist トリガーを削除する。
+   
+- hist式
+```
+hist:keys=<field1[,field2,...]>[:values=<field1[,field2,...]>]
+[:sort=<field1[,field2,...]>][:size=#entries][:pause][:continue]
+[:clear][:name=histname1][:<handler>.<action>] [if <filter>]
+```
+- 構文 [Documentation/trace/histogram.rst](https://www.kernel.org/doc/Documentation/trace/histogram.rst)
+
 ### 14.10.1 単一キー
 ### 14.10.2 フィールド
 ### 14.10.3 修飾子
