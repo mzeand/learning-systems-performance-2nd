@@ -597,7 +597,40 @@ hist:keys=<field1[,field2,...]>[:values=<field1[,field2,...]>]
 ```
 - 構文 [Documentation/trace/histogram.rst](https://www.kernel.org/doc/Documentation/trace/histogram.rst)
 
+> A histogram trigger command is an event trigger command that aggregates event hits into a hash table keyed on one or more trace event format fields (or stacktrace) and a set of running totals derived from one or more trace event format fields and/or event counts (hitcount).
+>
+--
+> ヒストグラムトリガーコマンドは、イベントトリガーコマンドであり、1つ以上のトレースイベントフォーマットフィールド（またはスタックトレース）に基づいてキーされたハッシュテーブルにイベントヒットを集約し、1つ以上のトレースイベントフォーマットフィールドおよび/またはイベントカウント（ヒットカウント）から派生した一連の実行合計を設定します。
+
 ### 14.10.1 単一キー
+
+- raw_syscalls:sys_enter トレースポイントを介してシステムコールを数え、プロセスIDごとに分類したヒストグラムを作る。
+  - sys_enter: システムコールのエントリーポイント
+```
+# cd /sys/kernel/debug/tracing
+# echo 'hist:key=common_pid' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info: hist:keys=common_pid.execname:vals=hitcount:sort=hitcount:size=2048
+[active]
+#
+{ common_pid: 347 } hitcount: 1
+{ common_pid: 345 } hitcount: 3
+{ common_pid: 504 } hitcount: 8
+[...]
+Totals:
+Hits: 883372
+Entries: 12
+Dropped: 0
+# echo '!hist:key=common_pid' > events/raw_syscalls/sys_enter/trigger
+```
+
+- Hits: ハッシュへの書き込み回数
+- Entries: ハッシュのエントリ数
+- Dropped: エントリ数がハッシュのサイズを超えていた場合、何個のエントリの情報が取れていないか
+
 ### 14.10.2 フィールド
 ### 14.10.3 修飾子
 ### 14.10.4 PIDフィルタ
