@@ -16,7 +16,7 @@
   - トレーサーはイベントの詳細を提供
 - この出力は、vfs_read( )がrw_verify_area( )を呼び出し、rw_verify_area( )security_file_permission( )を呼び出しているといったことを示している。
 TODO:
-```shell
+```
 
 # funcgraph vfs_read
 Tracing "vfs_read"... Ctrl-C to end.
@@ -63,11 +63,11 @@ Tracing "vfs_read"... Ctrl-C to end.
 
 参考) [(ftrace)trace-cmdでfunction_graphを使ってみる](https://nopipi.hatenablog.com/entry/2015/12/20/195708)
 - trace-cmdのインストール
-```shell
+```
 apt-get install trace-cmd
 ```
 
-```shell
+```
 trace-cmd record -p function_graph -g __x64_sys_mmap -g __x64_sys_brk ls
 trace-cmd report -t > trace.log
 cat trace.log 
@@ -76,7 +76,7 @@ cat trace.log
 
 - 手持ちのバージョンのカーネルで使えるFtraceトレーサーのリストアップ
 
-```shell
+```
 # cat /sys/kernel/debug/tracing/available_tracers
 hwlat blk mmiotrace function_graph wakeup_dl wakeup_rt wakeup function nop
 ```
@@ -86,13 +86,13 @@ hwlat blk mmiotrace function_graph wakeup_dl wakeup_rt wakeup function nop
 ## 14.2 tracefs(/sys)
 - Ftraceの機能を使うためのインターフェースは、tracefsファイルシステムである。例えば、次のように `/sys/kernel/tracing` にマウントされていなければならない。
 
-```shell
+```
 mount -t tracefs tracefs /sys/kernel/tracing
 ```
 
 - Ftraceはもともとdebugfsファイルシステムの一部。debugfs がマウントされている場合、Ftrace はもともとのディレクトリ構造を尊重して、tracing サブディレクトリにtracefs をマウントする。
 
-```shell
+```
 # mount -t debugfs,tracefs
 debugfs on /sys/kernel/debug type debugfs (rw,relatime)
 tracefs on /sys/kernel/debug/tracing type tracefs (rw,relatime)
@@ -100,7 +100,7 @@ tracefs on /sys/kernel/debug/tracing type tracefs (rw,relatime)
 ### 14.2.1 tracefsの内容
 - tracingディレクトリ内の制御、出力ファイル
 
-```shell
+```
 # ls -F /sys/kernel/debug/tracing
 available_events max_graph_depth stack_trace_filter
 available_filter_functions options/ synthetic_events
@@ -127,13 +127,13 @@ available_tracers per_cpu/ timestamp_mode
 | instances（ディレクトリ）  | 読み書き両用 | 並行ユーザーのFtarce インスタンス                                                  |
 
 - Ftraceトレーサが今使われているかどうか。
-```shell
+```
 # cat /sys/kernel/debug/tracing/current_tracer
 nop
 ```
   - nopが表示された場合、今使われているトレーサーはない。以下のようにしてトレーサーを有効にする。
     - blk トレーサーを有効にする場合
-```shell
+```
 # echo blk > /sys/kernel/debug/tracing/current_tracer
 ```
 
@@ -145,7 +145,7 @@ nop
 - 関数プロファイラは、コンパイラがすべてのカーネル関数の先頭にプロファイリング呼び出しを挿入する。
   - これらの呼び出しは、使われないときには高速なnop 命令に置き換えられる。
 - 約10 秒間に渡って名前の先頭が“tcp” のすべてのカーネル呼び出しを数える関数プロファイラを実行する場合。
-```shell
+```
 # echo 'tcp*' > set_ftrace_filter
 # echo 1 > function_profile_enabled
 # sleep 10
@@ -154,7 +154,7 @@ nop
 ```
   - これで、プロファイリングの結果がtrace_stat ディレクトリの“function” ファイルに格納される。
 
-```shell
+```
 # head trace_stat/function*
 ==> trace_stat/function0 <==
 Function                Hit     Time            Avg         s^2
@@ -196,7 +196,7 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 ### 14.4.1 traceの使い方
 - 名前の末尾が"sleep"のすべてのカーネル関数をトレースし、最終的に/tmp/out.trace01.txtファイルにイベントを保存する場合。
 
-```shell
+```
 # cd /sys/kernel/debug/tracing
 # echo 1 > tracing_on # ← 不要かもしれない
 # echo '*sleep' > set_ftrace_filter
@@ -212,7 +212,7 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
   - 1行目：_ _x64_sys_nanosleep( ) 関数で、do_syscall_64( ) から呼び出されている
 
 - 改行を書き込めばtraceの内容をクリアできる。
-```shell
+```
 # > trace
 ```
 - current_tracerをnopの状態に戻してもクリアされる。
@@ -222,20 +222,52 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 - このファイルを読み出すと、エンドレスのイベントストリームが返される。
 - trace_pipeはイベントを消費するため、読み出したイベントはトレースバッファから消える。
 - trace_pipeを使って"sleep"イベントをライブでみる。
-```shell
+```
 # echo '*sleep' > set_ftrace_filter
 # echo function > current_tracer
 ```
-- ![trace_pipe](./images/ch14/trace_pipe.png)
+```
+# cat trace_pipe
+    multipathd-348 [001] .... 332624.519190: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] .... 332624.519192: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+    multipathd-348 [001] .... 332624.519192: do_nanosleep <-hrtimer_nanosleep
+    multipathd-348 [001] .... 332625.519272: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] .... 332625.519274: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+    multipathd-348 [001] .... 332625.519275: do_nanosleep <-hrtimer_nanosleep
+        cron-504 [001] .... 332625.560150: __x64_sys_nanosleep <-do_syscall_64
+        cron-504 [001] .... 332625.560152: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+        cron-504 [001] .... 332625.560152: do_nanosleep <-hrtimer_nanosleep
+^C
+# echo nop > current_tracer
+# echo > set_ftrace_filter
+```
   - multipathd、cronプロセスが何度もsleep を呼び出していることがわかる。
 - 頻度の高いイベントは、traceファイルにイベントをキャプチャして後で分析できるようにした方が良い。
 
 ### 14.4.3 オプション
 - Ftraceのトレース出力をカスタマイズするためのオプションは、trace_optionsかoptionsディレクトリで設置できる。
   - フラグの欄を無効にする場合
-  - ![trace_options](./images/ch14/trace_options.png)
+
+```
+# echo 0 > options/irq-info
+# cat trace
+# tracer: function
+#
+# entries-in-buffer/entries-written: 3300/3300 #P:2
+#
+#          TASK-PID CPU#    TIMESTAMP   FUNCTION
+#           | |        |        |       |
+    multipathd-348 [001] 332762.532877: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] 332762.532879: hrtimer_nanosleep <-__x64_sys_nanosleep
+    multipathd-348 [001] 332762.532880: do_nanosleep <-hrtimer_nanosleep
+[...]
+```
+
   - 元に戻す場合
-```shell
+```
 # echo 1 > options/irq-info
 ```
 - そのほかは、optionsディレクトリのファイルリストを取ればわかる。
@@ -247,10 +279,27 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 - カーネルソースに配置されたトレーシング関数に過ぎない。
 - tracefsで見ることができ、Ftraceと出力/制御ファイルを共有している。
 - block:block_rq_issue トレースポイントを有効にしてイベントをライブ出力する。
-  - ![block_rq_issue](./images/ch14/block_rq_issue.png)
+
+```
+# cd /sys/kernel/debug/tracing
+# echo 1 > events/block/block_rq_issue/enable
+# cat trace_pipe
+        sync-4844 [001] .... 343996.918805: block_rq_issue: 259,0 WS 4096 ()
+2048 + 8 [sync]
+        sync-4844 [001] .... 343996.918808: block_rq_issue: 259,0 WSM 4096 ()
+10560 + 8 [sync]
+        sync-4844 [001] .... 343996.918809: block_rq_issue: 259,0 WSM 4096 ()
+38424 + 8 [sync]
+        sync-4844 [001] .... 343996.918809: block_rq_issue: 259,0 WSM 4096 ()
+4196384 + 8 [sync]
+        sync-4844 [001] .... 343996.918810: block_rq_issue: 259,0 WSM 4096 ()
+4462592 + 8 [sync]
+^C
+# echo 0 > events/block/block_rq_issue/enable
+```
 - トレースポイントはevents以下のディレクトリ構造内に制御ファイルを持っている。
 - ここのトレースシステムごとにディレクトリがあり、その中に個々のイベントのためのサブディレクトリがある。
-```shell
+```
 # ls events/block/block_rq_issue/　　# block がトレースシステム block_rq_issueがイベント
 enable filter format hist id trigger
 ```
@@ -264,13 +313,23 @@ enable filter format hist id trigger
 - フィールド: formatファイルのフィールド
 - 演算子: 数値なら ==, !=、<、<=、>、>=、&、文字列なら==、!=、~
 - block:block_rq_insert トレースポイントにフィルタをセットして、bytes フィールドが64KBよりも大きいイベントだけをトレースする。
-  - ![block_rq_insert](./images/ch14/block_rq_insert.png)
 
+```
+# echo 'bytes > 65536' > events/block/block_rq_insert/filter
+# cat trace_pipe
+    kworker/u4:1-7173 [000] .... 378115.779394: block_rq_insert: 259,0 W 262144 ()
+5920256 + 512 [kworker/u4:1]
+    kworker/u4:1-7173 [000] .... 378115.784654: block_rq_insert: 259,0 W 262144 ()
+5924336 + 512 [kworker/u4:1]
+    kworker/u4:1-7173 [000] .... 378115.789136: block_rq_insert: 259,0 W 262144 ()
+5928432 + 512 [kworker/u4:1]
+^C
+```
 ### 14.5.2 トリガー
 - トリガーは、イベントが発生した時に追加のトレーシングコマンドを実行する。
   - 他のトレーシングを有効/無効にする, スタックトレースを表示する, トレーシングバッファのスナップショットをとるもの、、
 - 利用できるトリガーコマンドのリストは、トリガーが設定されていないときにtriggerファイルを見るとわかる。
-```shell
+```
 # cat events/block/block_rq_issue/trigger
 # Available triggers:
 # traceon traceoff snapshot stacktrace enable_event disable_event enable_hist
@@ -279,7 +338,7 @@ disable_hist hist
 - エラー条件の原因となったイベントを見たい時に役立つ。
   - エラー条件の位置にトレーシングを無効にするトリガー(traceoff)を配置すると、トレースバッファにはエラー条件までのイベントだけが残る。
 - if キーワードを使えば、トリガーは前節のフィルタと組み合わせられる。
-```shell
+```
 # echo 'traceoff if bytes > 65536' > events/block/block_rq_insert/trigger
 ```
 ## 14.6 kprobe
@@ -291,7 +350,7 @@ disable_hist hist
 - 関数の引数や戻り値を報告できる。
 ### 14.6.1 イベントトレーシング
 - kprobe を使ってdo_nanosleep( ) カーネル関数をインストルメンテーションする
-```shell
+```
 # echo 'p:brendan do_nanosleep' >> kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -322,7 +381,7 @@ static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mod
 [...]
 ```
   - Intel x86_64 システムで最初の2 個の引数をトレースし、16 進形式（デフォルト）で表示
-```shell
+```
 # echo 'p:brendan do_nanosleep hrtimer_sleeper=$arg1 hrtimer_mode=$arg2' >>kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -338,7 +397,7 @@ hrtimer_sleeper=0xffffaa6a4030be80 hrtimer_mode=0x1
 ```
 ### 14.6.3 戻り値
 - 戻り値については、kretprobeのもとで特別な別名$retval を使えるようになっている。
-```shell
+```
 # echo 'r:brendan do_nanosleep ret=$retval' >> kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -355,7 +414,7 @@ hrtimer_sleeper=0xffffaa6a4030be80 hrtimer_mode=0x1
     - do_nanosleep()の戻り値 ret=0x0 値は "0"(成功)
 ### 14.6.4 フイルタとトリガー
 
-```shell
+```
 # cat events/kprobes/brendan/format
 name: brendan
 ID: 2024
@@ -373,13 +432,13 @@ print fmt: "(%lx) hrtimer_sleeper=0x%Lx hrtimer_mode=0x%Lx", REC->__probe_ip, RE
 ```
   - hrtimer_sleeper とhrtimer_mode は brendanさんがつけたカスタムの変数名
 - hrtimer_modeが1 ではないときに限りdo_nanosleep( ) 呼び出しをトレースする。
-```shell
+```
 # echo 'hrtimer_mode != 1' > events/kprobes/brendan/filter
 ```
 ### 14.6.5 kprobeプロファイラ
 - kprobe が有効になっているときには、Ftrace はkprobe イベントの発生回数を数える。
 - 数えた回数は、kprobe_profile ファイルに書き込まれる。
-```shell
+```
 # cat /sys/kernel/debug/tracing/kprobe_profile
     p_blk_account_io_start_bcc_19454        1808    0
     p_blk_mq_start_request_bcc_19454        677     0
@@ -404,7 +463,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 ```
 - カーネルはユーザー空間のソフトウェアのシンボルを持っていないので、ユーザー空間のツールでオフセットを明らかにしてカーネルに与える。
 - uprobe を使ってbash(1) シェルのreadline( ) 関数をインストルメンテーションする
-```shell
+```
 # readelf -s /bin/bash | grep -w readline # ← シンボルオフセットを調べる
     882: 00000000000b61e0 153 FUNC GLOBAL DEFAULT 14 readline
 # echo 'p:brendan /bin/bash:0xb61e0' >> uprobe_events
@@ -428,7 +487,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 - kprobe と同様に、events/uprobes/... ディレクトリでフィルタとトリガーを使える。
 ### 14.7.4 uprobeプロファイラ
 - uprobe が有効になっているときには、Ftrace はuprobe イベントの発生回数を数える。数えた回数はuprobe_profile ファイルに書き込まれる。
-```shell
+```
 # cat /sys/kernel/debug/tracing/uprobe_profile
 /bin/bash brendan   11
 ```
@@ -436,7 +495,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 - 関数グラフ（function_graph）トレーサーは、関数のコールグラフを表示して、コードの流れを明らかにする。
 ### 14.8.1 コールグラフのトレーシング
 - do_nanosleep( ) 関数に対して関数グラフトレーサーを使ってdo_nanosleep( ) の子関数を表示している。
-```shell
+```
 # echo do_nanosleep > set_graph_function
 # echo function_graph > current_tracer
 # cat trace_pipe
@@ -468,16 +527,20 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
     - !: 100μ秒よりも長い
     - +: 10μ秒よりも長い
   - オーバーヘッドがかかるので、関数フィルターを使ってトレースを減らす、
-```shell
+```
 # echo do_nanosleep > set_ftrace_filter
 # cat trace_pipe
 [...]
 7) $ 1000130 us | } /* do_nanosleep */
 ^C
 ```
-### 14.8.1 オプション
+### 14.8.2 オプション
 - オプションを指定すれば出力内容を変えられる。
-```shell
+  - CPU ID（funcgraph-cpu）
+  - プロセス名（funcgraph-proc）
+  - 関数の実行時間（funcgraph-duration）
+  - ディレイマーカー（funcgraph-overhead）
+```
 # ls options/funcgraph-*
 options/funcgraph-abstime options/funcgraph-irqs options/funcgraph-proc
 options/funcgraph-cpu options/funcgraph-overhead options/funcgraph-tail
@@ -486,7 +549,40 @@ options/funcgraph-duration options/funcgraph-overrun
 
 ## 14.9 Ftraceのハードウェアレイテンシ(hwlat)トレーサー
 
+- hwlat（hardware latency detector、ハードウェアレイテンシ検出器）
+  - 外部ハードウェアのイベントがCPUのパフォーマンスに摂動を与えているのはいつかを検出
+  - 👩‍💻 リアルタイムアプリケーションや高性能コンピューティング環境など、厳格なタイミング要件を持つシステムで特に重要
+    - システムのハードウェアとソフトウェアの間で発生する遅延を測定
+    - 応用分野
+      - 産業オートメーション: ロボティクスや製造ラインなど、厳しいタイミング制約
+      - 通信インフラ
+      - 金融取引: 高頻度取引（HFT）
+- 注意: hwlat は自らシステムに摂動を与えるような実験を実行する
+  - 著者の場合、可観測性ツールではなくマイクロベンチマークツールに分類する。
+
+- 実験として割り込みを無効にした上でコードループを実行し、ループの各イテレーションの実行にかかった時間を計測する。
+- 各CPUでもっとも遅く、しきい値（デフォルトで10m秒, tracing_thresh ファイルで設定できる）を越えているループイテレーションが表示される
+```
+# cd /sys/kernel/debug/tracing
+# echo hwlat > current_tracer
+# cat trace_pipe
+    <...>-5820 [001] d... 354016.973699: #1 inner/outer(us): 2152/1933  ts:1578801212.559595228
+    <...>-5820 [000] d... 354017.985568: #2 inner/outer(us): 19/26      ts:1578801213.571460991
+    <...>-5820 [001] dn.. 354019.009489: #3 inner/outer(us): 1699/5894  ts:1578801214.595380588
+    <...>-5820 [000] d... 354020.033575: #4 inner/outer(us): 43/49      ts:1578801215.619463259
+    <...>-5820 [001] d... 354021.057566: #5 inner/outer(us): 18/45      ts:1578801216.643451721
+    <...>-5820 [000] d... 354022.081503: #6 inner/outer(us): 18/38      ts:1578801217.667385514
+^C
+# echo nop > current_tracer
+```
+- 1行目は10μ秒というしきい値を大きく超えており、外部摂動の影響を受けている。
+
+- #1、...: シーケンス番号
+- “inner/outer(us)” の数値: ループ内での時間（inner）と次のループイテレーションまでのコードロジックの実行時間（outer）
+- ts: イテレーション終了時のタイムスタンプ
+
 ## 14.10 Ftrace histトリガー
+q
 ### 14.10.1 単一キー
 ### 14.10.2 フィールド
 ### 14.10.3 修飾子
