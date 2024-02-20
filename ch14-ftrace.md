@@ -809,8 +809,75 @@ events/synthetic/syscall_latency/trigger
 ```
 
 ### 14.11.2 trace-cmdの1行
+
+#### 14.11.2.1 イベントのリストの表示
+
+- イベントソース（トレースポイント、kprobe イベント、uprobe イベント）のリストを表示する。
+```
+trace-cmd list -e
+
+```
+
+```
+trace-cmd list -e syscalls:
+```
+
+```
+trace-cmd list -e syscalls:sys_enter_nanosleep -F
+```
+
+#### 14.11.2.2 関数トレーシング
+
+- 10 秒間、システム全体で名前の先頭が“tcp_” のすべてのカーネル関数をトレースする。
+```
+trace-cmd record -p function -l 'tcp_*' sleep 10
+```
+
+- PID 21124 のプロセスで名前の先頭が“vfs_” のすべてのカーネル関数をトレースする。
+```
+trace-cmd record -p function -l 'vfs_*' -P 21124
+
+```
+
 ### 14.11.3 trace-cmdとperf(1)
+
+- 10 秒間、システム全体でdo_nanosleep( ) カーネル関数とそれが呼び出した子関数をトレースする。
+```
+trace-cmd record -p function_graph -g do_nanosleep sleep 10
+```
 ### 14.11.4 trace-cmdによる関数グラフトレーシング
+
+- Ctrl-C が押されるまですべてのブロックI/Oトレースポイントをトレースする。
+```
+trace-cmd record -e block
+```
+
+- ls(1) コマンドのすべてのシステムコールをトレースする。
+```
+trace-cmd record -e syscalls -F ls
+```
+
+#### 14.11.2.5 レポート作成
+- trace.dat 出力ファイルの内容のうち、CPU 0 のものだけを表示する。
+```
+trace-cmd report --cpu 0
+```
+
+#### 14.11.2.6 その他の機能
+
+- TCPポート8081 でトレース要求をリスンする。(ホストマシン側)
+```
+trace-cmd listen -p 8081
+```
+
+- recordサブコマンドの実行のためにリモートホストに接続する。(ターゲット側)
+```
+trace-cmd record ... -N addr:port
+```
+
+- 上記でトレースログのリモート取得ができる。
+👩‍💻[5.3 サブコマンド listen － トレースログのリモート取得](https://www.lineo.co.jp/blog/linux/linux-kernelshark-3.html#5.3)
+
 ### 14.11.5 KernelShark
 ### 14.11.6 trace-cmdのドキュメント
 
