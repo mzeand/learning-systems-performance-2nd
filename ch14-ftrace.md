@@ -746,7 +746,38 @@ Totals:
 ```
 - 👩‍💻blk_mqアーキテクチャ
   - 特に高性能なストレージデバイス CPUの各コアが独自のキューを持つことで、デバイスへのリクエスト処理を並行して行える
+
 ### 14.10.7 合成イベント
+- ほかのイベントによってトリガリングされる合成イベントが作れ
+- 合成イベントはイベント引数を自由に組み合わせられる
+
+```
+# cd /sys/kernel/debug/tracing
+# echo 'syscall_latency u64 lat_us; long id' >> synthetic_events
+# echo 'hist:keys=common_pid:ts0=common_timestamp.usecs' >> \
+events/raw_syscalls/sys_enter/trigger
+# echo 'hist:keys=common_pid:lat_us=common_timestamp.usecs-$ts0:'\
+'onmatch(raw_syscalls.sys_enter).trace(syscall_latency,$lat_us,id)' >>\
+events/raw_syscalls/sys_exit/trigger
+# echo 'hist:keys=lat_us,id.syscall:sort=lat_us' >> \
+events/synthetic/syscall_latency/trigger
+# sleep 10
+# cat events/synthetic/syscall_latency/hist
+[...]
+{ lat_us: 5779085, id: sys_epoll_wait [232] } hitcount: 1
+{ lat_us: 6232897, id: sys_poll [ 7] } hitcount: 1
+{ lat_us: 6233840, id: sys_poll [ 7] } hitcount: 1
+[...]
+{ lat_us: 10002176, id: sys_select [ 23] } hitcount: 1
+[...]
+```
+- 出力はレイテンシが高いものだけ
+- ヒストグラムは、レイテンシ（単位μ秒）とシステムコールID のペアを数える
+- ⚠️このイベントを無効にしてクリーンアップするためには、すべての文字列に“!” プレフィックスを付けて逆順にechoしなければならない。
+- 合成イベントでは、出力以外に2種類のハッシュ操作を行っている。
+1. 出力の一部ではない値（タイムスタンプ）をハッシュに格納する。
+2. 前のイベントがハッシュに書き込んだキー/バリューペアを次のイベントが読み出す。
+- 合成イベントにはまだ多くの可能性がある
 
 ## 14.11 trace-cmd
 ### 14.11.1 サブコマンドの概要
