@@ -662,6 +662,16 @@ Dropped: 0
 [...]
 ```
 ### 14.10.3 修飾子
+- histトリガーは出力に情報を追加するための修飾子をサポートしている。
+  - PID の場合は.execname、システムコールID の場合は.syscall
+```
+# echo 'hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
+[...]
+{ common_pid: bash [ 32379] } hitcount: 166
+{ common_pid: sshd [ 32296] } hitcount: 259
+{ common_pid: dd [ 32396] } hitcount: 869024
+[...]
+```
 ### 14.10.4 PIDフィルタ
 ### 14.10.5 複数キー
 ### 14.10.6 スタックトレースキー
