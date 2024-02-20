@@ -632,6 +632,35 @@ Dropped: 0
 - Dropped: エントリ数がハッシュのサイズを超えていた場合、何個のエントリの情報が取れていないか
 
 ### 14.10.2 フィールド
+- ハッシュフィールドは、イベントのformatファイルで定義されている。
+  - 14.10.1 では、common_pid を使っている。
+```
+# cat events/raw_syscalls/sys_enter/format
+[...]
+    field:int common_pid; offset:4; size:4; signed:1;
+    field:long id; offset:8; size:8; signed:1;
+    field:unsigned long args[6]; offset:16; size:48; signed:0;
+```
+
+- id を使う場合。
+```
+# echo 'hist:key=id' > events/raw_syscalls/sys_enter/trigger
+# cat events/raw_syscalls/sys_enter/hist
+[...]
+    { id: 14 } hitcount: 48
+    { id: 1 } hitcount: 80362
+    { id: 0 } hitcount: 80396
+[...]
+```
+
+- 上のIDはシステムコールIDで、以下で定義されている。
+```
+# more /usr/include/x86_64-linux-gnu/asm/unistd_64.h
+[...]
+    #define __NR_read 0
+    #define __NR_write 1
+[...]
+```
 ### 14.10.3 修飾子
 ### 14.10.4 PIDフィルタ
 ### 14.10.5 複数キー
