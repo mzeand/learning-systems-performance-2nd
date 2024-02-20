@@ -666,13 +666,36 @@ Dropped: 0
   - PID の場合は.execname、システムコールID の場合は.syscall
 ```
 # echo 'hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
 [...]
 { common_pid: bash [ 32379] } hitcount: 166
 { common_pid: sshd [ 32296] } hitcount: 259
 { common_pid: dd [ 32396] } hitcount: 869024
 [...]
+echo '!hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
 ```
 ### 14.10.4 PIDフィルタ
+- PIDに一致するものだけを取り出すフィルタを設定できる。
+  - システムコールIDでヒストグラムを作ってから、dd(1) のPIDに一致するものだけを取り出す
+```
+# echo 'hist:key=id.syscall if common_pid==32396' > events/raw_syscalls/sys_enter/trigger
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info: hist:keys=id.syscall:vals=hitcount:sort=hitcount:size=2048 if common_pid==32396 [active]
+#
+
+{ id: sys_write [ 1] }  hitcount: 106425
+{ id: sys_read [ 0] }   hitcount: 106425
+
+    Totals:
+        Hits: 212850
+        Entries: 2
+        Dropped: 0
+
+```
 ### 14.10.5 複数キー
 ### 14.10.6 スタックトレースキー
 ### 14.10.7 合成イベント
