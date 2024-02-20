@@ -697,6 +697,31 @@ echo '!hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
 
 ```
 ### 14.10.5 複数キー
+- 複数のキーを使うという方法
+  - 第2 キーとしてシステムコールIDを指定
+
+```
+# echo 'hist:key=common_pid.execname,id' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info:
+hist:keys=common_pid.execname,id:vals=hitcount:sort=hitcount:size=2048
+[active]
+#
+[...]
+{ common_pid: sshd [ 14250], id: 23 } hitcount: 36
+{ common_pid: bash [ 14261], id: 13 } hitcount: 42
+{ common_pid: sshd [ 14250], id: 14 } hitcount: 72
+{ common_pid: dd [ 14325], id: 0 } hitcount: 9195176
+{ common_pid: dd [ 14325], id: 1 } hitcount: 9195176
+Totals:
+    Hits: 18391064
+    Entries: 75
+    Dropped: 0
+    Dropped: 0
+```
 ### 14.10.6 スタックトレースキー
 ### 14.10.7 合成イベント
 
