@@ -949,6 +949,32 @@ apt install kernelshark
 - 動画: https://www.youtube.com/watch?v=2ff-7UTg5rE
 
 ## 14.12 perf ftrace
+- perf(1) ユーティリティにはftraceサブコマンドがあり、関数/関数グラフトレーサーにアクセスできる。
+
+```
+# perf ftrace -T do_nanosleep -a sleep 10
+0) sleep-22821 | | do_nanosleep() {
+1) multipa-348 | | do_nanosleep() {
+1) multipa-348 | $ 1000068 us | }
+1) multipa-348 | | do_nanosleep() {
+1) multipa-348 | $ 1000068 us | }
+[...]
+```
+
+```
+# perf ftrace -G do_nanosleep -a sleep 10
+1) sleep-22828 | | do_nanosleep() {
+1) sleep-22828 | ==========> |
+1) sleep-22828 | | smp_irq_work_interrupt() {
+1) sleep-22828 | | irq_enter() {
+1) sleep-22828 | 0.258 us | rcu_irq_enter();
+1) sleep-22828 | 0.800 us | }
+1) sleep-22828 | | __wake_up() {
+1) sleep-22828 | | __wake_up_common_lock() {
+1) sleep-22828 | 0.491 us | _raw_spin_lock_irqsave();
+[...]
+```
+- ftraceサブコマンドはごく単純なラッパーであり、perf(1) のほかの機能とはうまく噛み合わない。
 
 ## 14.13 perf-tools
 
