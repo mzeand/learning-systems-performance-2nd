@@ -900,6 +900,28 @@ trace-cmd record ... -N addr:port
 - trace-cmd の方が関数/関数グラフトレーサーのサポートが優れており、そこがtrace-cmd の利点のひとつ
 
 ### 14.11.4 trace-cmdによる関数グラフトレーシング
+
+- 関数グラフトレーサーで同じdo_nanosleep( ) カーネル関数をトレースする
+  - 👩‍💻 cut -c 66- : 66文字目から行末までを切り出す
+```
+# trace-cmd record -p function_graph -g do_nanosleep sleep 10
+    plugin 'function_graph'
+CPU0 data recorded at offset=0x4fe000
+    12288 bytes in size
+CPU1 data recorded at offset=0x501000
+    45056 bytes in size
+# trace-cmd report | cut -c 66-
+             | do_nanosleep() {
+             | hrtimer_start_range_ns() {
+             | lock_hrtimer_base.isra.0() {
+    0.250 us | _raw_spin_lock_irqsave();
+    0.688 us | }
+    0.190 us | ktime_get();
+    0.153 us | get_nohz_timer_target();
+[...]
+```
+
+
 ### 14.11.5 KernelShark
 ### 14.11.6 trace-cmdのドキュメント
 
