@@ -15,8 +15,8 @@
   - プロファイラは回数やヒストグラムといった集計情報を提供
   - トレーサーはイベントの詳細を提供
 - この出力は、vfs_read( )がrw_verify_area( )を呼び出し、rw_verify_area( )security_file_permission( )を呼び出しているといったことを示している。
-TODO:
-```shell
+- 
+```
 
 # funcgraph vfs_read
 Tracing "vfs_read"... Ctrl-C to end.
@@ -63,11 +63,11 @@ Tracing "vfs_read"... Ctrl-C to end.
 
 参考) [(ftrace)trace-cmdでfunction_graphを使ってみる](https://nopipi.hatenablog.com/entry/2015/12/20/195708)
 - trace-cmdのインストール
-```shell
+```
 apt-get install trace-cmd
 ```
 
-```shell
+```
 trace-cmd record -p function_graph -g __x64_sys_mmap -g __x64_sys_brk ls
 trace-cmd report -t > trace.log
 cat trace.log 
@@ -76,7 +76,7 @@ cat trace.log
 
 - 手持ちのバージョンのカーネルで使えるFtraceトレーサーのリストアップ
 
-```shell
+```
 # cat /sys/kernel/debug/tracing/available_tracers
 hwlat blk mmiotrace function_graph wakeup_dl wakeup_rt wakeup function nop
 ```
@@ -86,13 +86,13 @@ hwlat blk mmiotrace function_graph wakeup_dl wakeup_rt wakeup function nop
 ## 14.2 tracefs(/sys)
 - Ftraceの機能を使うためのインターフェースは、tracefsファイルシステムである。例えば、次のように `/sys/kernel/tracing` にマウントされていなければならない。
 
-```shell
+```
 mount -t tracefs tracefs /sys/kernel/tracing
 ```
 
 - Ftraceはもともとdebugfsファイルシステムの一部。debugfs がマウントされている場合、Ftrace はもともとのディレクトリ構造を尊重して、tracing サブディレクトリにtracefs をマウントする。
 
-```shell
+```
 # mount -t debugfs,tracefs
 debugfs on /sys/kernel/debug type debugfs (rw,relatime)
 tracefs on /sys/kernel/debug/tracing type tracefs (rw,relatime)
@@ -100,7 +100,7 @@ tracefs on /sys/kernel/debug/tracing type tracefs (rw,relatime)
 ### 14.2.1 tracefsの内容
 - tracingディレクトリ内の制御、出力ファイル
 
-```shell
+```
 # ls -F /sys/kernel/debug/tracing
 available_events max_graph_depth stack_trace_filter
 available_filter_functions options/ synthetic_events
@@ -127,13 +127,13 @@ available_tracers per_cpu/ timestamp_mode
 | instances（ディレクトリ）  | 読み書き両用 | 並行ユーザーのFtarce インスタンス                                                  |
 
 - Ftraceトレーサが今使われているかどうか。
-```shell
+```
 # cat /sys/kernel/debug/tracing/current_tracer
 nop
 ```
   - nopが表示された場合、今使われているトレーサーはない。以下のようにしてトレーサーを有効にする。
     - blk トレーサーを有効にする場合
-```shell
+```
 # echo blk > /sys/kernel/debug/tracing/current_tracer
 ```
 
@@ -145,7 +145,7 @@ nop
 - 関数プロファイラは、コンパイラがすべてのカーネル関数の先頭にプロファイリング呼び出しを挿入する。
   - これらの呼び出しは、使われないときには高速なnop 命令に置き換えられる。
 - 約10 秒間に渡って名前の先頭が“tcp” のすべてのカーネル呼び出しを数える関数プロファイラを実行する場合。
-```shell
+```
 # echo 'tcp*' > set_ftrace_filter
 # echo 1 > function_profile_enabled
 # sleep 10
@@ -154,7 +154,7 @@ nop
 ```
   - これで、プロファイリングの結果がtrace_stat ディレクトリの“function” ファイルに格納される。
 
-```shell
+```
 # head trace_stat/function*
 ==> trace_stat/function0 <==
 Function                Hit     Time            Avg         s^2
@@ -196,7 +196,7 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 ### 14.4.1 traceの使い方
 - 名前の末尾が"sleep"のすべてのカーネル関数をトレースし、最終的に/tmp/out.trace01.txtファイルにイベントを保存する場合。
 
-```shell
+```
 # cd /sys/kernel/debug/tracing
 # echo 1 > tracing_on # ← 不要かもしれない
 # echo '*sleep' > set_ftrace_filter
@@ -212,7 +212,7 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
   - 1行目：_ _x64_sys_nanosleep( ) 関数で、do_syscall_64( ) から呼び出されている
 
 - 改行を書き込めばtraceの内容をクリアできる。
-```shell
+```
 # > trace
 ```
 - current_tracerをnopの状態に戻してもクリアされる。
@@ -222,20 +222,52 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 - このファイルを読み出すと、エンドレスのイベントストリームが返される。
 - trace_pipeはイベントを消費するため、読み出したイベントはトレースバッファから消える。
 - trace_pipeを使って"sleep"イベントをライブでみる。
-```shell
+```
 # echo '*sleep' > set_ftrace_filter
 # echo function > current_tracer
 ```
-- ![trace_pipe](./images/ch14/trace_pipe.png)
+```
+# cat trace_pipe
+    multipathd-348 [001] .... 332624.519190: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] .... 332624.519192: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+    multipathd-348 [001] .... 332624.519192: do_nanosleep <-hrtimer_nanosleep
+    multipathd-348 [001] .... 332625.519272: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] .... 332625.519274: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+    multipathd-348 [001] .... 332625.519275: do_nanosleep <-hrtimer_nanosleep
+        cron-504 [001] .... 332625.560150: __x64_sys_nanosleep <-do_syscall_64
+        cron-504 [001] .... 332625.560152: hrtimer_nanosleep <-
+__x64_sys_nanosleep
+        cron-504 [001] .... 332625.560152: do_nanosleep <-hrtimer_nanosleep
+^C
+# echo nop > current_tracer
+# echo > set_ftrace_filter
+```
   - multipathd、cronプロセスが何度もsleep を呼び出していることがわかる。
 - 頻度の高いイベントは、traceファイルにイベントをキャプチャして後で分析できるようにした方が良い。
 
 ### 14.4.3 オプション
 - Ftraceのトレース出力をカスタマイズするためのオプションは、trace_optionsかoptionsディレクトリで設置できる。
   - フラグの欄を無効にする場合
-  - ![trace_options](./images/ch14/trace_options.png)
+
+```
+# echo 0 > options/irq-info
+# cat trace
+# tracer: function
+#
+# entries-in-buffer/entries-written: 3300/3300 #P:2
+#
+#          TASK-PID CPU#    TIMESTAMP   FUNCTION
+#           | |        |        |       |
+    multipathd-348 [001] 332762.532877: __x64_sys_nanosleep <-do_syscall_64
+    multipathd-348 [001] 332762.532879: hrtimer_nanosleep <-__x64_sys_nanosleep
+    multipathd-348 [001] 332762.532880: do_nanosleep <-hrtimer_nanosleep
+[...]
+```
+
   - 元に戻す場合
-```shell
+```
 # echo 1 > options/irq-info
 ```
 - そのほかは、optionsディレクトリのファイルリストを取ればわかる。
@@ -247,10 +279,27 @@ tcp_send_mss            317935  165881.9 us     0.521 us    352309.0 us
 - カーネルソースに配置されたトレーシング関数に過ぎない。
 - tracefsで見ることができ、Ftraceと出力/制御ファイルを共有している。
 - block:block_rq_issue トレースポイントを有効にしてイベントをライブ出力する。
-  - ![block_rq_issue](./images/ch14/block_rq_issue.png)
+
+```
+# cd /sys/kernel/debug/tracing
+# echo 1 > events/block/block_rq_issue/enable
+# cat trace_pipe
+        sync-4844 [001] .... 343996.918805: block_rq_issue: 259,0 WS 4096 ()
+2048 + 8 [sync]
+        sync-4844 [001] .... 343996.918808: block_rq_issue: 259,0 WSM 4096 ()
+10560 + 8 [sync]
+        sync-4844 [001] .... 343996.918809: block_rq_issue: 259,0 WSM 4096 ()
+38424 + 8 [sync]
+        sync-4844 [001] .... 343996.918809: block_rq_issue: 259,0 WSM 4096 ()
+4196384 + 8 [sync]
+        sync-4844 [001] .... 343996.918810: block_rq_issue: 259,0 WSM 4096 ()
+4462592 + 8 [sync]
+^C
+# echo 0 > events/block/block_rq_issue/enable
+```
 - トレースポイントはevents以下のディレクトリ構造内に制御ファイルを持っている。
 - ここのトレースシステムごとにディレクトリがあり、その中に個々のイベントのためのサブディレクトリがある。
-```shell
+```
 # ls events/block/block_rq_issue/　　# block がトレースシステム block_rq_issueがイベント
 enable filter format hist id trigger
 ```
@@ -264,13 +313,23 @@ enable filter format hist id trigger
 - フィールド: formatファイルのフィールド
 - 演算子: 数値なら ==, !=、<、<=、>、>=、&、文字列なら==、!=、~
 - block:block_rq_insert トレースポイントにフィルタをセットして、bytes フィールドが64KBよりも大きいイベントだけをトレースする。
-  - ![block_rq_insert](./images/ch14/block_rq_insert.png)
 
+```
+# echo 'bytes > 65536' > events/block/block_rq_insert/filter
+# cat trace_pipe
+    kworker/u4:1-7173 [000] .... 378115.779394: block_rq_insert: 259,0 W 262144 ()
+5920256 + 512 [kworker/u4:1]
+    kworker/u4:1-7173 [000] .... 378115.784654: block_rq_insert: 259,0 W 262144 ()
+5924336 + 512 [kworker/u4:1]
+    kworker/u4:1-7173 [000] .... 378115.789136: block_rq_insert: 259,0 W 262144 ()
+5928432 + 512 [kworker/u4:1]
+^C
+```
 ### 14.5.2 トリガー
 - トリガーは、イベントが発生した時に追加のトレーシングコマンドを実行する。
   - 他のトレーシングを有効/無効にする, スタックトレースを表示する, トレーシングバッファのスナップショットをとるもの、、
 - 利用できるトリガーコマンドのリストは、トリガーが設定されていないときにtriggerファイルを見るとわかる。
-```shell
+```
 # cat events/block/block_rq_issue/trigger
 # Available triggers:
 # traceon traceoff snapshot stacktrace enable_event disable_event enable_hist
@@ -279,7 +338,7 @@ disable_hist hist
 - エラー条件の原因となったイベントを見たい時に役立つ。
   - エラー条件の位置にトレーシングを無効にするトリガー(traceoff)を配置すると、トレースバッファにはエラー条件までのイベントだけが残る。
 - if キーワードを使えば、トリガーは前節のフィルタと組み合わせられる。
-```shell
+```
 # echo 'traceoff if bytes > 65536' > events/block/block_rq_insert/trigger
 ```
 ## 14.6 kprobe
@@ -291,7 +350,7 @@ disable_hist hist
 - 関数の引数や戻り値を報告できる。
 ### 14.6.1 イベントトレーシング
 - kprobe を使ってdo_nanosleep( ) カーネル関数をインストルメンテーションする
-```shell
+```
 # echo 'p:brendan do_nanosleep' >> kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -322,7 +381,7 @@ static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mod
 [...]
 ```
   - Intel x86_64 システムで最初の2 個の引数をトレースし、16 進形式（デフォルト）で表示
-```shell
+```
 # echo 'p:brendan do_nanosleep hrtimer_sleeper=$arg1 hrtimer_mode=$arg2' >>kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -338,7 +397,7 @@ hrtimer_sleeper=0xffffaa6a4030be80 hrtimer_mode=0x1
 ```
 ### 14.6.3 戻り値
 - 戻り値については、kretprobeのもとで特別な別名$retval を使えるようになっている。
-```shell
+```
 # echo 'r:brendan do_nanosleep ret=$retval' >> kprobe_events
 # echo 1 > events/kprobes/brendan/enable
 # cat trace_pipe
@@ -355,7 +414,7 @@ hrtimer_sleeper=0xffffaa6a4030be80 hrtimer_mode=0x1
     - do_nanosleep()の戻り値 ret=0x0 値は "0"(成功)
 ### 14.6.4 フイルタとトリガー
 
-```shell
+```
 # cat events/kprobes/brendan/format
 name: brendan
 ID: 2024
@@ -373,13 +432,13 @@ print fmt: "(%lx) hrtimer_sleeper=0x%Lx hrtimer_mode=0x%Lx", REC->__probe_ip, RE
 ```
   - hrtimer_sleeper とhrtimer_mode は brendanさんがつけたカスタムの変数名
 - hrtimer_modeが1 ではないときに限りdo_nanosleep( ) 呼び出しをトレースする。
-```shell
+```
 # echo 'hrtimer_mode != 1' > events/kprobes/brendan/filter
 ```
 ### 14.6.5 kprobeプロファイラ
 - kprobe が有効になっているときには、Ftrace はkprobe イベントの発生回数を数える。
 - 数えた回数は、kprobe_profile ファイルに書き込まれる。
-```shell
+```
 # cat /sys/kernel/debug/tracing/kprobe_profile
     p_blk_account_io_start_bcc_19454        1808    0
     p_blk_mq_start_request_bcc_19454        677     0
@@ -404,7 +463,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 ```
 - カーネルはユーザー空間のソフトウェアのシンボルを持っていないので、ユーザー空間のツールでオフセットを明らかにしてカーネルに与える。
 - uprobe を使ってbash(1) シェルのreadline( ) 関数をインストルメンテーションする
-```shell
+```
 # readelf -s /bin/bash | grep -w readline # ← シンボルオフセットを調べる
     882: 00000000000b61e0 153 FUNC GLOBAL DEFAULT 14 readline
 # echo 'p:brendan /bin/bash:0xb61e0' >> uprobe_events
@@ -428,7 +487,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 - kprobe と同様に、events/uprobes/... ディレクトリでフィルタとトリガーを使える。
 ### 14.7.4 uprobeプロファイラ
 - uprobe が有効になっているときには、Ftrace はuprobe イベントの発生回数を数える。数えた回数はuprobe_profile ファイルに書き込まれる。
-```shell
+```
 # cat /sys/kernel/debug/tracing/uprobe_profile
 /bin/bash brendan   11
 ```
@@ -436,7 +495,7 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
 - 関数グラフ（function_graph）トレーサーは、関数のコールグラフを表示して、コードの流れを明らかにする。
 ### 14.8.1 コールグラフのトレーシング
 - do_nanosleep( ) 関数に対して関数グラフトレーサーを使ってdo_nanosleep( ) の子関数を表示している。
-```shell
+```
 # echo do_nanosleep > set_graph_function
 # echo function_graph > current_tracer
 # cat trace_pipe
@@ -468,16 +527,20 @@ r[:[GRP/]EVENT] PATH:OFFSET [FETCHARGS] : リターンプローブの設定（ur
     - !: 100μ秒よりも長い
     - +: 10μ秒よりも長い
   - オーバーヘッドがかかるので、関数フィルターを使ってトレースを減らす、
-```shell
+```
 # echo do_nanosleep > set_ftrace_filter
 # cat trace_pipe
 [...]
 7) $ 1000130 us | } /* do_nanosleep */
 ^C
 ```
-### 14.8.1 オプション
+### 14.8.2 オプション
 - オプションを指定すれば出力内容を変えられる。
-```shell
+  - CPU ID（funcgraph-cpu）
+  - プロセス名（funcgraph-proc）
+  - 関数の実行時間（funcgraph-duration）
+  - ディレイマーカー（funcgraph-overhead）
+```
 # ls options/funcgraph-*
 options/funcgraph-abstime options/funcgraph-irqs options/funcgraph-proc
 options/funcgraph-cpu options/funcgraph-overhead options/funcgraph-tail
@@ -486,35 +549,642 @@ options/funcgraph-duration options/funcgraph-overrun
 
 ## 14.9 Ftraceのハードウェアレイテンシ(hwlat)トレーサー
 
+- hwlat（hardware latency detector、ハードウェアレイテンシ検出器）
+  - 外部ハードウェアのイベントがCPUのパフォーマンスに摂動を与えているのはいつかを検出
+  - 👩‍💻 リアルタイムアプリケーションや高性能コンピューティング環境など、厳格なタイミング要件を持つシステムで特に重要
+    - システムのハードウェアとソフトウェアの間で発生する遅延を測定
+    - 応用分野
+      - 産業オートメーション: ロボティクスや製造ラインなど、厳しいタイミング制約
+      - 通信インフラ
+      - 金融取引: 高頻度取引（HFT）
+- 注意: hwlat は自らシステムに摂動を与えるような実験を実行する
+  - 著者の場合、可観測性ツールではなくマイクロベンチマークツールに分類する。
+
+- 実験として割り込みを無効にした上でコードループを実行し、ループの各イテレーションの実行にかかった時間を計測する。
+- 各CPUでもっとも遅く、しきい値（デフォルトで10m秒, tracing_thresh ファイルで設定できる）を越えているループイテレーションが表示される
+```
+# cd /sys/kernel/debug/tracing
+# echo hwlat > current_tracer
+# cat trace_pipe
+    <...>-5820 [001] d... 354016.973699: #1 inner/outer(us): 2152/1933  ts:1578801212.559595228
+    <...>-5820 [000] d... 354017.985568: #2 inner/outer(us): 19/26      ts:1578801213.571460991
+    <...>-5820 [001] dn.. 354019.009489: #3 inner/outer(us): 1699/5894  ts:1578801214.595380588
+    <...>-5820 [000] d... 354020.033575: #4 inner/outer(us): 43/49      ts:1578801215.619463259
+    <...>-5820 [001] d... 354021.057566: #5 inner/outer(us): 18/45      ts:1578801216.643451721
+    <...>-5820 [000] d... 354022.081503: #6 inner/outer(us): 18/38      ts:1578801217.667385514
+^C
+# echo nop > current_tracer
+```
+- 1行目は10μ秒というしきい値を大きく超えており、外部摂動の影響を受けている。
+
+- #1、...: シーケンス番号
+- “inner/outer(us)” の数値: ループ内での時間（inner）と次のループイテレーションまでのコードロジックの実行時間（outer）
+- ts: イテレーション終了時のタイムスタンプ
+
 ## 14.10 Ftrace histトリガー
+- イベントのカスタムヒストグラムを作る。
+- 手順
+1. echo 'hist:expression' > events/.../trigger: hist トリガーを作る。
+2. sleep duration: ヒストグラムを構成するデータを蓄積する。
+3. cat events/.../hist: ヒストグラムを表示する。
+4. echo '!hist:expression' > events/.../trigger: hist トリガーを削除する。
+   
+- hist式
+```
+hist:keys=<field1[,field2,...]>[:values=<field1[,field2,...]>]
+[:sort=<field1[,field2,...]>][:size=#entries][:pause][:continue]
+[:clear][:name=histname1][:<handler>.<action>] [if <filter>]
+```
+- 構文 [Documentation/trace/histogram.rst](https://www.kernel.org/doc/Documentation/trace/histogram.rst)
+
+> A histogram trigger command is an event trigger command that aggregates event hits into a hash table keyed on one or more trace event format fields (or stacktrace) and a set of running totals derived from one or more trace event format fields and/or event counts (hitcount).
+>
+--
+> ヒストグラムトリガーコマンドは、イベントトリガーコマンドであり、1つ以上のトレースイベントフォーマットフィールド（またはスタックトレース）に基づいてキーされたハッシュテーブルにイベントヒットを集約し、1つ以上のトレースイベントフォーマットフィールドおよび/またはイベントカウント（ヒットカウント）から派生した一連の実行合計を設定します。
+
 ### 14.10.1 単一キー
+
+- raw_syscalls:sys_enter トレースポイントを介してシステムコールを数え、プロセスIDごとに分類したヒストグラムを作る。
+  - sys_enter: システムコールのエントリーポイント
+```
+# cd /sys/kernel/debug/tracing
+# echo 'hist:key=common_pid' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info: hist:keys=common_pid.execname:vals=hitcount:sort=hitcount:size=2048
+[active]
+#
+{ common_pid: 347 } hitcount: 1
+{ common_pid: 345 } hitcount: 3
+{ common_pid: 504 } hitcount: 8
+[...]
+Totals:
+Hits: 883372
+Entries: 12
+Dropped: 0
+# echo '!hist:key=common_pid' > events/raw_syscalls/sys_enter/trigger
+```
+
+- Hits: ハッシュへの書き込み回数
+- Entries: ハッシュのエントリ数
+- Dropped: エントリ数がハッシュのサイズを超えていた場合、何個のエントリの情報が取れていないか
+
 ### 14.10.2 フィールド
+- ハッシュフィールドは、イベントのformatファイルで定義されている。
+  - 14.10.1 では、common_pid を使っている。
+```
+# cat events/raw_syscalls/sys_enter/format
+[...]
+    field:int common_pid; offset:4; size:4; signed:1;
+    field:long id; offset:8; size:8; signed:1;
+    field:unsigned long args[6]; offset:16; size:48; signed:0;
+```
+
+- id を使う場合。
+```
+# echo 'hist:key=id' > events/raw_syscalls/sys_enter/trigger
+# cat events/raw_syscalls/sys_enter/hist
+[...]
+    { id: 14 } hitcount: 48
+    { id: 1 } hitcount: 80362
+    { id: 0 } hitcount: 80396
+[...]
+```
+
+- 上のIDはシステムコールIDで、以下で定義されている。
+```
+# more /usr/include/x86_64-linux-gnu/asm/unistd_64.h
+[...]
+    #define __NR_read 0
+    #define __NR_write 1
+[...]
+```
 ### 14.10.3 修飾子
+- histトリガーは出力に情報を追加するための修飾子をサポートしている。
+  - PID の場合は.execname、システムコールID の場合は.syscall
+```
+# echo 'hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+[...]
+{ common_pid: bash [ 32379] } hitcount: 166
+{ common_pid: sshd [ 32296] } hitcount: 259
+{ common_pid: dd [ 32396] } hitcount: 869024
+[...]
+echo '!hist:key=common_pid.execname' > events/raw_syscalls/sys_enter/trigger
+```
 ### 14.10.4 PIDフィルタ
+- PIDに一致するものだけを取り出すフィルタを設定できる。
+  - システムコールIDでヒストグラムを作ってから、dd(1) のPIDに一致するものだけを取り出す
+```
+# echo 'hist:key=id.syscall if common_pid==32396' > events/raw_syscalls/sys_enter/trigger
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info: hist:keys=id.syscall:vals=hitcount:sort=hitcount:size=2048 if common_pid==32396 [active]
+#
+
+{ id: sys_write [ 1] }  hitcount: 106425
+{ id: sys_read [ 0] }   hitcount: 106425
+
+    Totals:
+        Hits: 212850
+        Entries: 2
+        Dropped: 0
+
+```
 ### 14.10.5 複数キー
+- 複数のキーを使うという方法
+  - 第2 キーとしてシステムコールIDを指定
+
+```
+# echo 'hist:key=common_pid.execname,id' > events/raw_syscalls/sys_enter/trigger
+# sleep 10
+# cat events/raw_syscalls/sys_enter/hist
+# event histogram
+#
+# trigger info:
+hist:keys=common_pid.execname,id:vals=hitcount:sort=hitcount:size=2048
+[active]
+#
+[...]
+{ common_pid: sshd [ 14250], id: 23 } hitcount: 36
+{ common_pid: bash [ 14261], id: 13 } hitcount: 42
+{ common_pid: sshd [ 14250], id: 14 } hitcount: 72
+{ common_pid: dd [ 14325], id: 0 } hitcount: 9195176
+{ common_pid: dd [ 14325], id: 1 } hitcount: 9195176
+Totals:
+    Hits: 18391064
+    Entries: 75
+    Dropped: 0
+    Dropped: 0
+```
 ### 14.10.6 スタックトレースキー
+- 「イベントまでのコードパスを知りたい」
+  - たとえば、block:block_rq_issue トレースポイントに至るコードパスの数を数えてみよう。
+    - このエントリは、new_sync_read( ) がext4_file_read_iter( ) を呼び出し、ext4_file_read_iter( ) がgeneric_file_read_iter( ) を呼び出し…という形でディスクI/Oが行われていることを示している。
+
+```
+# echo 'hist:key=stacktrace' > events/block/block_rq_issue/trigger
+# sleep 10
+# cat events/block/block_rq_issue/hist
+[...]
+{ stacktrace:
+nvme_queue_rq+0x16c/0x1d0
+__blk_mq_try_issue_directly+0x116/0x1c0
+
+[...]
+
+} hitcount: 266
+Totals:
+    Hits: 522
+    Entries: 10
+    Dropped: 0
+```
+- 👩‍💻blk_mqアーキテクチャ
+  - 特に高性能なストレージデバイス CPUの各コアが独自のキューを持つことで、デバイスへのリクエスト処理を並行して行える
+
 ### 14.10.7 合成イベント
+- ほかのイベントによってトリガリングされる合成イベントが作れ
+- 合成イベントはイベント引数を自由に組み合わせられる
+
+```
+# cd /sys/kernel/debug/tracing
+# echo 'syscall_latency u64 lat_us; long id' >> synthetic_events
+# echo 'hist:keys=common_pid:ts0=common_timestamp.usecs' >> \
+events/raw_syscalls/sys_enter/trigger
+# echo 'hist:keys=common_pid:lat_us=common_timestamp.usecs-$ts0:'\
+'onmatch(raw_syscalls.sys_enter).trace(syscall_latency,$lat_us,id)' >>\
+events/raw_syscalls/sys_exit/trigger
+# echo 'hist:keys=lat_us,id.syscall:sort=lat_us' >> \
+events/synthetic/syscall_latency/trigger
+# sleep 10
+# cat events/synthetic/syscall_latency/hist
+[...]
+{ lat_us: 5779085, id: sys_epoll_wait [232] } hitcount: 1
+{ lat_us: 6232897, id: sys_poll [ 7] } hitcount: 1
+{ lat_us: 6233840, id: sys_poll [ 7] } hitcount: 1
+[...]
+{ lat_us: 10002176, id: sys_select [ 23] } hitcount: 1
+[...]
+```
+- 出力はレイテンシが高いものだけ
+- ヒストグラムは、レイテンシ（単位μ秒）とシステムコールID のペアを数える
+- ⚠️このイベントを無効にしてクリーンアップするためには、すべての文字列に“!” プレフィックスを付けて逆順にechoしなければならない。
+- 合成イベントでは、出力以外に2種類のハッシュ操作を行っている。
+1. 出力の一部ではない値（タイムスタンプ）をハッシュに格納する。
+2. 前のイベントがハッシュに書き込んだキー/バリューペアを次のイベントが読み出す。
+- 合成イベントにはまだ多くの可能性がある
 
 ## 14.11 trace-cmd
+- trace-cmd はトレーシングシステムとバイナリ出力形式の設定、その他の機能のためのサブコマンドとオプションを持っている。
+
+```
+# 👩‍💻書き込みきできるパスで実行すること
+# trace-cmd record -p function -l do_nanosleep sleep 10
+# trace-cmd report
+```
+
 ### 14.11.1 サブコマンドの概要
+
+| サブコマンド | 説明                                                                               |
+| ------------ | ---------------------------------------------------------------------------------- |
+| record       | トレーシングしてtrace.dat ファイルに記録する。                                     |
+| report       | trace.dat ファイルからトレースを読み出す。                                         |
+| stream       | トレースして結果を標準出力に表示する。                                             |
+| list         | 対応しているトレーシングイベントのリストを表示する。                               |
+| stat         | カーネルのトレーシングサブシステムの状態を表示する。                               |
+| profile      | トレースして、カーネルの時間、レイテンシ情報を表示するカスタムレポートを生成する。 |
+| listen       | ネットワークからのトレース要求を受け付ける。                                       |
+
+- trace-cmd の将来のバージョンは、サブコマンドを追加する可能性がある。
+  - 完全なリストは、引数なしのtrace-cmdを実行すれば表示される。
+
+- サブコマンドのオプション
+```
+# trace-cmd record -h
+```
+
 ### 14.11.2 trace-cmdの1行
+
+#### 14.11.2.1 イベントのリストの表示
+
+- イベントソース（トレースポイント、kprobe イベント、uprobe イベント）のリストを表示する。
+```
+trace-cmd list -e
+
+```
+
+```
+trace-cmd list -e syscalls:
+```
+
+```
+trace-cmd list -e syscalls:sys_enter_nanosleep -F
+```
+
+#### 14.11.2.2 関数トレーシング
+
+- 10 秒間、システム全体で名前の先頭が“tcp_” のすべてのカーネル関数をトレースする。
+```
+trace-cmd record -p function -l 'tcp_*' sleep 10
+```
+
+- PID 21124 のプロセスで名前の先頭が“vfs_” のすべてのカーネル関数をトレースする。
+```
+trace-cmd record -p function -l 'vfs_*' -P 21124
+
+```
+
 ### 14.11.3 trace-cmdとperf(1)
+
+- 10 秒間、システム全体でdo_nanosleep( ) カーネル関数とそれが呼び出した子関数をトレースする。
+```
+trace-cmd record -p function_graph -g do_nanosleep sleep 10
+```
 ### 14.11.4 trace-cmdによる関数グラフトレーシング
+
+- Ctrl-C が押されるまですべてのブロックI/Oトレースポイントをトレースする。
+```
+trace-cmd record -e block
+```
+
+- ls(1) コマンドのすべてのシステムコールをトレースする。
+```
+trace-cmd record -e syscalls -F ls
+```
+
+#### 14.11.2.5 レポート作成
+- trace.dat 出力ファイルの内容のうち、CPU 0 のものだけを表示する。
+```
+trace-cmd report --cpu 0
+```
+
+#### 14.11.2.6 その他の機能
+
+- TCPポート8081 でトレース要求をリスンする。(ホストマシン側)
+```
+trace-cmd listen -p 8081
+```
+
+- recordサブコマンドの実行のためにリモートホストに接続する。(ターゲット側)
+```
+trace-cmd record ... -N addr:port
+```
+
+- 上記でトレースログのリモート取得ができる。
+👩‍💻[5.3 サブコマンド listen － トレースログのリモート取得](https://www.lineo.co.jp/blog/linux/linux-kernelshark-3.html#5.3)
+
+### 14.11.3 trace-cmdとperf(1)
+
+表14-6 perf(1) とtrace-cmd の比較
+| 属性                                      | perf(1)            | trace-cmd       |
+| ----------------------------------------- | ------------------ | --------------- |
+| バイナリ出力ファイル                      | perf.data          | trace.dat       |
+| トレースポイント                          | 対応               | 対応            |
+| kprobe                                    | 対応               | 部分的に対応(1) |
+| uprobe                                    | 対応               | 部分的に対応(1) |
+| USDT                                      | 対応               | 部分的に対応(1) |
+| PMC                                       | 対応               | 非対応          |
+| 時間に基づくサンプリング                  | 対応               | 非対応          |
+| 関数トレーシング                          | 部分的に対応(2)    | 対応            |
+| 関数グラフトレーシング                    | 部分的に対応(2)    | 対応            |
+| ネットワークを介したクライアント/サーバー | 非対応             | 対応            |
+| 出力ファイルのオーバーヘッド              | 低い非常に         | 低い            |
+| フロントエンド                            | 多種               | KernelShark     |
+| ソース                                    | Linux のtools/perf | git.kernel.org  |
+
+- trace-cmd の方が関数/関数グラフトレーサーのサポートが優れており、そこがtrace-cmd の利点のひとつ
+
+### 14.11.4 trace-cmdによる関数グラフトレーシング
+
+- 関数グラフトレーサーで同じdo_nanosleep( ) カーネル関数をトレースする
+  - 👩‍💻 cut -c 66- : 66文字目から行末までを切り出す
+```
+# trace-cmd record -p function_graph -g do_nanosleep sleep 10
+    plugin 'function_graph'
+CPU0 data recorded at offset=0x4fe000
+    12288 bytes in size
+CPU1 data recorded at offset=0x501000
+    45056 bytes in size
+# trace-cmd report | cut -c 66-
+             | do_nanosleep() {
+             | hrtimer_start_range_ns() {
+             | lock_hrtimer_base.isra.0() {
+    0.250 us | _raw_spin_lock_irqsave();
+    0.688 us | }
+    0.190 us | ktime_get();
+    0.153 us | get_nohz_timer_target();
+[...]
+```
+
 ### 14.11.5 KernelShark
+- KernelShark は、trace-cmd 出力ファイルのためのグラフィカルユーザーインターフェイス
+
+```
+# trace-cmd record -e 'sched:*'
+# kernelshark
+```
+
+- 👩‍💻 kernelshark を Ubuntuへインストール
+```
+# kernelshark
+Command 'kernelshark' not found, but can be installed with:
+apt install kernelshark
+```
+- 起動はXが使える環境で・・
+- 参考）https://www.kkaneko.jp/tools/server/tracecmd.html
+
+- ![図14-3 kernelshark](./images/ch14/figure-14-3.png)
+
+
 ### 14.11.6 trace-cmdのドキュメント
+- trace-cmd
+- man
+- ソースコード・・
+- スライド: https://www.slideshare.net/ennael/kernel-recipes-2017-understanding-the-linux-kernel-via-ftrace-steven-rostedt
+- 動画: https://www.youtube.com/watch?v=2ff-7UTg5rE
 
 ## 14.12 perf ftrace
+- perf(1) ユーティリティにはftraceサブコマンドがあり、関数/関数グラフトレーサーにアクセスできる。
+
+- 👩‍💻 perf install
+```
+sudo apt install linux-tools-`uname -r`
+```
+
+```
+# perf ftrace -T do_nanosleep -a sleep 10
+0) sleep-22821 | | do_nanosleep() {
+1) multipa-348 | | do_nanosleep() {
+1) multipa-348 | $ 1000068 us | }
+1) multipa-348 | | do_nanosleep() {
+1) multipa-348 | $ 1000068 us | }
+[...]
+```
+
+```
+# perf ftrace -G do_nanosleep -a sleep 10
+1) sleep-22828 | | do_nanosleep() {
+1) sleep-22828 | ==========> |
+1) sleep-22828 | | smp_irq_work_interrupt() {
+1) sleep-22828 | | irq_enter() {
+1) sleep-22828 | 0.258 us | rcu_irq_enter();
+1) sleep-22828 | 0.800 us | }
+1) sleep-22828 | | __wake_up() {
+1) sleep-22828 | | __wake_up_common_lock() {
+1) sleep-22828 | 0.491 us | _raw_spin_lock_irqsave();
+[...]
+```
+- ftraceサブコマンドはごく単純なラッパーであり、perf(1) のほかの機能とはうまく噛み合わない。
 
 ## 14.13 perf-tools
+- perf-tools は、Ftrace とperf(1) に基づく高度なパフォーマンス分析ツールのコレクション
+- 主として/sys のtracefs ファイルを自動設定するシェルスクリプトとして実装されている。
+- 開発したのは著者で、Netflix のサーバーにはデフォルトでインストールされる。
+
+- 👩‍💻 install
+```
+apt install bpfcc-tools
+```
+```
+# execsnoop-bpfcc
+Tracing exec()s. Ctrl-C to end.
+   PID  PPID ARGS
+  6684  6682 cat -v trace_pipe
+  6683  6679 gawk -v o=1 -v opt_name=0 -v name= -v opt_duration=0 [...]
+  6685 20997 man ls
+  6695  6685 pager
+  6691  6685 preconv -e UTF-8
+  6692  6685 tbl
+  6693  6685 nroff -mandoc -rLL=148n -rLT=148n -Tutf8
+  6698  6693 locale charmap
+  6699  6693 groff -mtty-char -Tutf8 -mandoc -rLL=148n -rLT=148n
+  6700  6699 troff -mtty-char -mandoc -rLL=148n -rLT=148n -Tutf8
+  6701  6699 grotty
+[...]
+```
+- ほかのツールでは観察できない短命なプロセスの問題のデバッグに使える。
 
 ### 14.13.1　対象領域
+
+- ![図14-4 perf-tools](./images/ch14/figure-14-4.png)
+
 ### 14.13.2 単一目的ツール
+- Unixの哲学に忠実に従っている。☺️
+
+| ツール        | 使っている機能 | 説明                                                               |
+| ------------- | -------------- | ------------------------------------------------------------------ |
+| bitesize(8)   | perf           | ディスクI/O のサイズを集計してヒストグラムの形で表示する           |
+| cachestat(8)  | Ftrace         | ページキャッシュのヒット/ミスの統計を表示する                      |
+| execsnoop(8)  | Ftrace         | 引数付きで新プロセスをトレースする（execve(2) を介して）           |
+| iolatency(8)  | Ftrace         | ディスクI/O レイテンシを集計してヒストグラムの形で表示する         |
+| iosnoop(8)    | Ftrace         | レイテンシなどの詳細情報付きでディスクI/O をトレースする           |
+| killsnoop(8)  | Ftrace         | kill(2) シグナルをトレースしてプロセスとシグナルの詳細を表示する   |
+| opensnoop(8)  | Ftrace         | open(2) ファミリのシステムコールをトレースし、ファイル名を表示する |
+| tcpretrans(8) | Ftrace         | TCPの再送をトレースし、アドレスとカーネルの状態を表示する          |
+
+```
+# iolatency
+Tracing block I/O. Output every 1 seconds. Ctrl-C to end.
+>=(ms) .. <(ms) : I/O |Distribution |
+    0 -> 1 : 731 |######################################|
+    1 -> 2 : 318 |################# |
+    2 -> 4 : 160 |######### |
+>=(ms) .. <(ms) : I/O |Distribution |
+    0 -> 1 : 2973 |######################################|
+    1 -> 2 : 497 |####### |
+    2 -> 4 : 26 |# |
+    4 -> 8 : 3 |# |
+>=(ms) .. <(ms) : I/O |Distribution |
+    0 -> 1 : 3130 |######################################|
+    1 -> 2 : 177 |### |
+    2 -> 4 : 1 |# |
+^C
+```
+- 👩‍💻 install
+```
+apt-get install perf-tools-unstable
+```
+
+- ブロックI/O の発行、完了のトレースポイントをトレースし、ユーザースペースでawk(1) を使ってすべてのイベントの読み出し、パース、後処理をしてヒストグラムを作っている。
+  - ディスクI/Oは比較的頻度が低いため、この方法でも有害なほどのオーバーヘッドをかけずにヒストグラムを作れている。
+- 拡張BPFは、カーネル空間でヒストグラム作成の計算を実行し、集計結果だけをユーザー空間に渡すようにしてオーバーヘッドを大幅に削減した。
+
 ### 14.13.3 多目的ツール
-### 14.13.4 perf-toolsの1行
+
+| ツール            | 使っている機能 | 説明                                                 |
+| ----------------- | -------------- | ---------------------------------------------------- |
+| funccount(8)      | Ftrace         | カーネル関数呼び出しを数える                         |
+| funcgraph(8)      | Ftrace         | カーネル関数をトレースし、子関数のコードフローを示す |
+| functrace(8)      | Ftrace         | カーネル関数をトレースする                           |
+| funcslower(8)     | Ftrace         | しきい値よりも遅いカーネル関数をトレースする         |
+| kprobe(8)         | Ftrace         | カーネル関数の動的トレーシング                       |
+| perf-stat-hist(8) | perf(1)        | トレースポイント引数のカスタムヒストグラムの作成     |
+| syscount(8)       | perf(1)        | システムコールを集計する                             |
+| tpoint(8)         | Ftrace         | トレースポイントをトレースする                       |
+| uprobe(8)         | Ftrace         | ユーザーレベル関数の動的トレーシング                 |
+
+### 14.13.4 perf-toolsの1行プログラム
+
+#### 14.13.4.1 Ftraceプロファイラ
+
+- すべてのカーネルTCP関数の呼び出し回数を数える。
+```
+funccount-perf 'tcp_*
+```
+
+#### 14.13.4.2 Ftraceトレーサー
+
+- do_nanosleep( ) カーネル関数をトレースし、3 レベルの深さですべての子関数呼び出しを表示する。
+```
+funcgraph-perf -m 3 do_nanosleep
+```
+
+#### 14.13.4.3 イベントトレーシング
+
+- kprobe を使ってdo_sys_open( ) カーネル関数をトレースする。
+```
+kprobe-perf p:do_sys_open
+```
+
+#### 14.13.4.4 CPUレジスタ
+- 関数引数の別名（$arg1、...、$argN）はFtrace の機能としては比較的新しいもの
+- 呼び出し規約は、syscall(2) のmanページでドキュメントされている。
+  - x86_64 レジスタ名
+```
+# man 2 syscall
+[...]
+       Arch/ABI    Instruction           System  Ret  Ret  Error    Notes
+                                         call #  val  val2
+       ───────────────────────────────────────────────────────────────────
+       alpha       callsys               v0      v0   a4   a3       1, 6
+       arc         trap0                 r8      r0   -    -
+       arm/OABI    swi NR                -       r0   -    -        2
+       arm/EABI    swi 0x0               r7      r0   r1   -
+       arm64       svc #0                w8      x0   x1   -
+       blackfin    excpt 0x0             P0      R0   -    -
+[...]
+       riscv       ecall                 a7      a0   a1   -
+       s390        svc 0                 r1      r2   r3   -        3
+       s390x       svc 0                 r1      r2   r3   -        3
+       superh      trap #0x17            r3      r0   r1   -        4, 6
+       sparc/32    t 0x10                g1      o0   o1   psr/csr  1, 6
+       sparc/64    t 0x6d                g1      o0   o1   psr/csr  1, 6
+       tile        swint1                R10     R00  -    R01      1
+       x86-64      syscall               rax     rax  rdx  -        5
+       x32         syscall               rax     rax  rdx  -        5
+       xtensa      syscall               a2      a2   -    -
+[...]
+
+```
 ### 14.13.5 例
+
+```
+# funccount-perf 'vfs_*'
+Tracing "vfs_*"... Ctrl-C to end.
+^C
+FUNC                              COUNT
+vfs_fstat                             1
+vfs_readlink                          2
+vfs_writev                            6
+vfs_open                             45
+vfs_getattr_nosec                    72
+vfs_fstatat                          86
+vfs_statx                            86
+vfs_write                           693
+vfs_read                            740
+
+Ending tracing...
+```
+
+- funccount(8) のオーバーヘッドは比較的低いので、よりコストのかかるトレーシングができる程度にカーネル関数呼び出しの頻度が低いかどうかのチェックにも使える。
+
 ### 14.13.6 perf-toolsとBCC/BPF
+- perf-tools は、著者がNetflixで開発した。
+  - perf-tools の多くのツールをBPFバージョンに書き換えた
+- perf-tools には、BPFツールにない利点がいくつかある
+  - funccount(8): 効率がよく、制約が少ない。
+  - funcgraph(8): 現在BCCにはない。
+  - histトリガー: 将来のperf-tools はこの機能を使い、kprobe ベースのBPFバージョンよりも効率的になるはずである。
+
+- 👩‍💻
+  - BCC(BPF Compiler Collection)はBPF(Berkeley Packet Filter)によるプログラム作成を支援するためのライブラリおよび、それを利用したツール群
+    - 「IOVisor」というLinux Foundationのプロジェクトにより開発されている。
+    - https://github.com/iovisor/bcc
+
 ### 14.13.7 ドキュメント
 
+```
+# funccount-perf -h
+USAGE: funccount [-hT] [-i secs] [-d secs] [-t top] funcstring
+                 -d seconds      # total duration of trace
+                 -h              # this usage message
+                 -i seconds      # interval summary
+                 -t top          # show top num entries only
+                 -T              # include timestamp (for -i)
+  eg,
+       funccount 'vfs*'          # trace all funcs that match "vfs*"
+       funccount -d 5 'tcp*'     # trace "tcp*" funcs for 5 seconds
+       funccount -t 10 'ext3*'   # show top 10 "ext3*" funcs
+       funccount -i 1 'ext3*'    # summary every 1 second
+       funccount -i 1 -d 5 'ext3*' # 5 x 1 second summaries
+```
 ## 14.14 Ftraceのドキュメント
+- Ftrace（およびトレースイベント）
+  - https://www.kernel.org/doc/html/latest/trace/ftrace.html
+  - https://www.kernel.org/doc/html/latest/trace/kprobetrace.html
+  - https://www.kernel.org/doc/html/latest/trace/uprobetracer.html
+  - https://www.kernel.org/doc/html/latest/trace/events.html
+  - https://www.kernel.org/doc/html/latest/trace/histogram.html
+
+- フロントエンドのドキュメント
+  - trace-cmd: https://trace-cmd.org
+  - perf ftrace: Linux ソースのtools/perf/Documentation/perf-ftrace.txt
+  - perf-tools: https://github.com/brendangregg/perf -tools
 
 ## 14.15 参考文献
+ |
