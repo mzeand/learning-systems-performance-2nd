@@ -15,7 +15,7 @@
   - プロファイラは回数やヒストグラムといった集計情報を提供
   - トレーサーはイベントの詳細を提供
 - この出力は、vfs_read( )がrw_verify_area( )を呼び出し、rw_verify_area( )security_file_permission( )を呼び出しているといったことを示している。
-TODO:
+- 
 ```
 
 # funcgraph vfs_read
@@ -1175,7 +1175,7 @@ USAGE: funccount [-hT] [-i secs] [-d secs] [-t top] funcstring
 ```
 ## 14.14 Ftraceのドキュメント
 - Ftrace（およびトレースイベント）
-  - https://www.kernel.org/doc/html/latest/trace/f trace.html
+  - https://www.kernel.org/doc/html/latest/trace/ftrace.html
   - https://www.kernel.org/doc/html/latest/trace/kprobetrace.html
   - https://www.kernel.org/doc/html/latest/trace/uprobetracer.html
   - https://www.kernel.org/doc/html/latest/trace/events.html
