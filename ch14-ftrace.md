@@ -951,6 +951,11 @@ apt install kernelshark
 ## 14.12 perf ftrace
 - perf(1) ユーティリティにはftraceサブコマンドがあり、関数/関数グラフトレーサーにアクセスできる。
 
+- 👩‍💻 perf install
+```
+sudo apt install linux-tools-`uname -r`
+```
+
 ```
 # perf ftrace -T do_nanosleep -a sleep 10
 0) sleep-22821 | | do_nanosleep() {
