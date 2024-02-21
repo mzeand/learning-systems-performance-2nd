@@ -942,6 +942,11 @@ apt install kernelshark
 
 
 ### 14.11.6 trace-cmdのドキュメント
+- trace-cmd
+- man
+- ソースコード・・
+- スライド: https://www.slideshare.net/ennael/kernel-recipes-2017-understanding-the-linux-kernel-via-ftrace-steven-rostedt
+- 動画: https://www.youtube.com/watch?v=2ff-7UTg5rE
 
 ## 14.12 perf ftrace
 
