@@ -982,6 +982,31 @@ sudo apt install linux-tools-`uname -r`
 - ftraceサブコマンドはごく単純なラッパーであり、perf(1) のほかの機能とはうまく噛み合わない。
 
 ## 14.13 perf-tools
+- perf-tools は、Ftrace とperf(1) に基づく高度なパフォーマンス分析ツールのコレクション
+- 主として/sys のtracefs ファイルを自動設定するシェルスクリプトとして実装されている。
+
+- 👩‍💻 install
+```
+apt install bpfcc-tools
+```
+```
+# execsnoop-bpfcc
+Tracing exec()s. Ctrl-C to end.
+   PID  PPID ARGS
+  6684  6682 cat -v trace_pipe
+  6683  6679 gawk -v o=1 -v opt_name=0 -v name= -v opt_duration=0 [...]
+  6685 20997 man ls
+  6695  6685 pager
+  6691  6685 preconv -e UTF-8
+  6692  6685 tbl
+  6693  6685 nroff -mandoc -rLL=148n -rLT=148n -Tutf8
+  6698  6693 locale charmap
+  6699  6693 groff -mtty-char -Tutf8 -mandoc -rLL=148n -rLT=148n
+  6700  6699 troff -mtty-char -mandoc -rLL=148n -rLT=148n -Tutf8
+  6701  6699 grotty
+[...]
+```
+- ほかのツールでは観察できない短命なプロセスの問題のデバッグに使える。
 
 ### 14.13.1　対象領域
 ### 14.13.2 単一目的ツール
