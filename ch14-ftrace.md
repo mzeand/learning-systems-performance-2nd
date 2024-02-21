@@ -921,8 +921,26 @@ CPU1 data recorded at offset=0x501000
 [...]
 ```
 
-
 ### 14.11.5 KernelShark
+- KernelShark は、trace-cmd 出力ファイルのためのグラフィカルユーザーインターフェイス
+
+```
+# trace-cmd record -e 'sched:*'
+# kernelshark
+```
+
+- 👩‍💻 kernelshark を Ubuntuへインストール
+```
+# kernelshark
+Command 'kernelshark' not found, but can be installed with:
+apt install kernelshark
+```
+- 起動はXが使える環境で・・
+- 参考）https://www.kkaneko.jp/tools/server/tracecmd.html
+
+- ![図14-3 kernelshark](./images/ch14/figure-14-3.png)
+
+
 ### 14.11.6 trace-cmdのドキュメント
 
 ## 14.12 perf ftrace
